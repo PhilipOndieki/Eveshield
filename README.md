@@ -306,4 +306,4 @@ Built for Power Hacks 2025
 
 **Built with 💜 for Power Hacks 2025 - Safety by Design**
 
-*Together, We Stand Guard*
+*Safety isn’t a Privilege it’s a Button.*
