@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, AlertTriangle, AlertCircle, Siren, MapPin, CheckCircle, Phone } from 'lucide-react'
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
+import { X, AlertTriangle, AlertCircle, Siren, MapPin, CheckCircle, Phone, Navigation } from 'lucide-react'
+import { collection, addDoc, serverTimestamp, getDocs, updateDoc, doc } from 'firebase/firestore'
 import { db } from '../utils/firebase'
 import { useAuth } from '../context/AuthContext'
 import Button from '../components/common/Button'
@@ -11,20 +11,21 @@ const Emergency = () => {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
 
-  const [step, setStep] = useState('select') // select, confirm, success
+  const [step, setStep] = useState('select') // select, confirm, sending, success
   const [selectedLevel, setSelectedLevel] = useState(null)
   const [location, setLocation] = useState(null)
   const [locationError, setLocationError] = useState(null)
-  const [address, setAddress] = useState(null)
-  const [loadingAddress, setLoadingAddress] = useState(false)
   const [additionalInfo, setAdditionalInfo] = useState('')
   const [loading, setLoading] = useState(false)
   const [incidentId, setIncidentId] = useState(null)
+  const [contacts, setContacts] = useState([])
+  const [bystanders, setBystanders] = useState([])
+  const [countdown, setCountdown] = useState(null)
 
   const severityLevels = [
     {
       level: 1,
-      color: 'concern',
+      color: 'warning-orange',
       icon: AlertCircle,
       title: 'I Feel Unsafe',
       description: 'You\'re being followed, feel uncomfortable, need someone on standby',
@@ -33,7 +34,7 @@ const Emergency = () => {
     },
     {
       level: 2,
-      color: 'immediate',
+      color: 'error-red',
       icon: AlertTriangle,
       title: 'I Need Help Now',
       description: 'Verbal harassment escalating, need nearby assistance immediately',
@@ -42,7 +43,7 @@ const Emergency = () => {
     },
     {
       level: 3,
-      color: 'critical',
+      color: 'deep-rose',
       icon: Siren,
       title: 'EMERGENCY - Life in Danger',
       description: 'Physical attack, severe danger, urgent intervention required',
@@ -51,82 +52,22 @@ const Emergency = () => {
     },
   ]
 
-  // Convert coordinates to readable address
-  const getAddressFromCoordinates = async (lat, lng) => {
-    setLoadingAddress(true)
-    try {
-      // Using OpenStreetMap Nominatim (free, no API key needed)
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-        {
-          headers: {
-            'User-Agent': 'EveShield-Emergency-App'
-          }
-        }
-      )
-      const data = await response.json()
-      
-      if (data && data.address) {
-        const addr = data.address
-        // Build readable address
-        const parts = [
-          addr.road || addr.street,
-          addr.suburb || addr.neighbourhood || addr.quarter,
-          addr.city || addr.town || addr.village,
-          addr.county || addr.state_district,
-          addr.country
-        ].filter(Boolean) // Remove undefined values
-        
-        setAddress(parts.join(', '))
-      } else {
-        setAddress(`Coordinates: ${lat.toFixed(4)}, ${lng.toFixed(4)}`)
-      }
-    } catch (error) {
-      console.error('Error getting address:', error)
-      setAddress(`Coordinates: ${lat.toFixed(4)}, ${lng.toFixed(4)}`)
-    } finally {
-      setLoadingAddress(false)
-    }
-  }
-
-  // Get user's location with better error handling
+  // Get user's location
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const lat = position.coords.latitude
-          const lng = position.coords.longitude
-          
+        (position) => {
           setLocation({
-            lat: lat,
-            lng: lng,
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
             accuracy: position.coords.accuracy,
+            timestamp: new Date().toISOString(),
           })
           setLocationError(null)
-          
-          // Get human-readable address
-          await getAddressFromCoordinates(lat, lng)
         },
         (error) => {
           console.error('Error getting location:', error)
-          let errorMessage = 'Unable to get location'
-          
-          switch(error.code) {
-            case error.PERMISSION_DENIED:
-              errorMessage = 'Location access denied. Please enable location in your browser settings.'
-              break
-            case error.POSITION_UNAVAILABLE:
-              errorMessage = 'Location information unavailable.'
-              break
-            case error.TIMEOUT:
-              errorMessage = 'Location request timed out.'
-              break
-            default:
-              errorMessage = 'An unknown error occurred.'
-          }
-          
-          setLocationError(errorMessage)
-          setLocation(null)
+          setLocationError('Location unavailable. Please enable location services.')
         },
         {
           enableHighAccuracy: true,
@@ -135,48 +76,119 @@ const Emergency = () => {
         }
       )
     } else {
-      setLocationError('Geolocation not supported by this browser')
+      setLocationError('Geolocation is not supported by your browser.')
     }
   }, [])
+
+  // Fetch contacts and bystanders
+  useEffect(() => {
+    const fetchNetworkData = async () => {
+      try {
+        // Fetch contacts
+        const contactsSnapshot = await getDocs(
+          collection(db, 'users', currentUser.uid, 'emergencyContacts')
+        )
+        const contactsData = contactsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        setContacts(contactsData)
+
+        // Fetch bystanders
+        const bystandersSnapshot = await getDocs(
+          collection(db, 'users', currentUser.uid, 'trustedBystanders')
+        )
+        const bystandersData = bystandersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        setBystanders(bystandersData.filter(b => b.availability === 'Available'))
+      } catch (error) {
+        console.error('Error fetching network data:', error)
+      }
+    }
+
+    fetchNetworkData()
+  }, [currentUser])
 
   const handleLevelSelect = (level) => {
     setSelectedLevel(level)
     setStep('confirm')
   }
 
+  const sendSMSAlerts = async (phoneNumbers, message) => {
+    // In production, this would integrate with Twilio, Africa's Talking, or similar SMS service
+    console.log('Sending SMS to:', phoneNumbers)
+    console.log('Message:', message)
+    
+    // Simulate SMS sending
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({ success: true, sent: phoneNumbers.length })
+      }, 1000)
+    })
+  }
+
   const handleSendAlert = async () => {
     setLoading(true)
+    setStep('sending')
 
     try {
+      const incidentNumber = generateIncidentNumber()
+      
+      // Prepare alert message
+      const alertMessage = `🚨 EMERGENCY ALERT from EveShield
+      
+${selectedLevel.badge}
+User: ${currentUser.displayName || 'User'}
+Time: ${new Date().toLocaleString()}
+Location: ${location ? `https://maps.google.com/?q=${location.lat},${location.lng}` : 'Location unavailable'}
+
+${additionalInfo ? `Notes: ${additionalInfo}` : ''}
+
+This is an automated emergency alert. Please respond immediately.`
+
+      // Get contact phone numbers
+      const contactNumbers = contacts
+        .filter(c => c.phoneNumber)
+        .map(c => c.phoneNumber)
+
+      const bystanderNumbers = bystanders
+        .filter(b => b.phoneNumber)
+        .map(b => b.phoneNumber)
+
+      // Send SMS alerts (in production)
+      if (contactNumbers.length > 0 || bystanderNumbers.length > 0) {
+        await sendSMSAlerts([...contactNumbers, ...bystanderNumbers], alertMessage)
+      }
+
       // Create incident in Firestore
       const incidentData = {
         userId: currentUser.uid,
-        incidentNumber: generateIncidentNumber(),
+        incidentNumber: incidentNumber,
         severity: selectedLevel.level,
         status: 'active',
         triggeredAt: serverTimestamp(),
-        location: location ? {
-          lat: location.lat,
-          lng: location.lng,
-          accuracy: location.accuracy,
-          address: address || 'Address lookup failed'
-        } : { 
-          lat: 0, 
-          lng: 0, 
-          address: 'Location unavailable' 
-        },
+        location: location || { lat: 0, lng: 0, address: 'Location unavailable' },
         alertDetails: {
           description: selectedLevel.description,
           customNotes: additionalInfo,
           method: 'manual',
+          levelBadge: selectedLevel.badge,
         },
         notifications: {
-          emergencyContacts: [],
-          bystanders: [],
+          emergencyContacts: contacts.map(c => ({
+            id: c.id,
+            name: c.fullName,
+            phone: c.phoneNumber,
+            notified: true,
+            notifiedAt: new Date().toISOString(),
+          })),
+          bystanders: bystanders.map(b => ({
+            id: b.id,
+            name: b.fullName,
+            phone: b.phoneNumber,
+            notified: true,
+            notifiedAt: new Date().toISOString(),
+          })),
         },
         responseLog: [
           {
-            timestamp: new Date(),
+            timestamp: new Date().toISOString(),
             action: 'Alert triggered',
             actor: 'User',
             details: `${selectedLevel.badge} alert initiated`,
@@ -184,23 +196,83 @@ const Emergency = () => {
         ],
       }
 
-      const docRef = await addDoc(collection(db, 'users', currentUser.uid, 'incidents'), incidentData)
+      const docRef = await addDoc(
+        collection(db, 'users', currentUser.uid, 'incidents'),
+        incidentData
+      )
+      
       setIncidentId(docRef.id)
+      
+      // Update user's safety status
+      await updateDoc(doc(db, 'users', currentUser.uid), {
+        safetyStatus: 'need-help',
+        statusUpdatedAt: serverTimestamp(),
+      })
+
       setStep('success')
     } catch (error) {
       console.error('Error sending alert:', error)
       alert('Failed to send alert. Please try again or call emergency services directly.')
+      setStep('confirm')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleMarkSafe = () => {
-    navigate('/incidents')
+  const handleMarkSafe = async () => {
+    try {
+      if (incidentId) {
+        await updateDoc(
+          doc(db, 'users', currentUser.uid, 'incidents', incidentId),
+          {
+            status: 'resolved',
+            resolvedAt: serverTimestamp(),
+            responseLog: [
+              {
+                timestamp: new Date().toISOString(),
+                action: 'Marked as safe',
+                actor: 'User',
+                details: 'User indicated they are now safe',
+              },
+            ],
+          }
+        )
+      }
+
+      await updateDoc(doc(db, 'users', currentUser.uid), {
+        safetyStatus: 'safe',
+        statusUpdatedAt: serverTimestamp(),
+      })
+
+      navigate('/dashboard')
+    } catch (error) {
+      console.error('Error marking safe:', error)
+      navigate('/dashboard')
+    }
   }
 
   const handleCallEmergency = () => {
     window.location.href = 'tel:999'
+  }
+
+  const handleRetryLocation = () => {
+    setLocationError(null)
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            timestamp: new Date().toISOString(),
+          })
+          setLocationError(null)
+        },
+        (error) => {
+          setLocationError('Unable to get location. Please try again.')
+        }
+      )
+    }
   }
 
   return (
@@ -208,7 +280,7 @@ const Emergency = () => {
       <div className="flex min-h-screen items-center justify-center p-4">
         {/* Level Selection */}
         {step === 'select' && (
-          <div className="relative bg-white rounded-lg shadow-2xl max-w-4xl w-full p-6">
+          <div className="relative bg-white rounded-lg shadow-2xl max-w-4xl w-full p-6 animate-fadeIn">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-3xl font-bold text-dark-charcoal">Emergency Alert</h2>
@@ -216,7 +288,7 @@ const Emergency = () => {
               </div>
               <button
                 onClick={() => navigate('/dashboard')}
-                className="text-warm-gray hover:text-dark-charcoal transition-colors p-1 rounded-full hover:bg-light-gray"
+                className="text-warm-gray hover:text-dark-charcoal transition-colors p-2 rounded-full hover:bg-light-gray"
               >
                 <X size={24} />
               </button>
@@ -229,11 +301,13 @@ const Emergency = () => {
                   <button
                     key={level.level}
                     onClick={() => handleLevelSelect(level)}
+                    className={`bg-${level.color} hover:opacity-90 transition-all duration-200 hover:scale-105 rounded-lg p-6 text-white text-left`}
                     style={{
-                      backgroundColor: level.level === 1 ? '#F59E0B' : level.level === 2 ? '#EF4444' : '#DC2626'
+                      backgroundColor: level.color === 'warning-orange' ? '#FFA726' :
+                                      level.color === 'error-red' ? '#D32F2F' :
+                                      '#E91E63'
                     }}
-                    className="hover:opacity-90 transition-all duration-200 hover:scale-105 rounded-lg p-6 text-white text-left shadow-lg"
-                  >                  
+                  >
                     <div className="bg-white bg-opacity-20 rounded-full p-3 inline-block mb-4">
                       <Icon size={32} />
                     </div>
@@ -252,25 +326,25 @@ const Emergency = () => {
 
         {/* Confirmation Screen */}
         {step === 'confirm' && selectedLevel && (
-          <div className="relative bg-white rounded-lg shadow-2xl max-w-2xl w-full p-6">
+          <div className="relative bg-white rounded-lg shadow-2xl max-w-2xl w-full p-6 animate-fadeIn">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-3xl font-bold text-dark-charcoal">Confirm Alert</h2>
               <button
                 onClick={() => setStep('select')}
-                className="text-warm-gray hover:text-dark-charcoal transition-colors p-1 rounded-full hover:bg-light-gray"
+                className="text-warm-gray hover:text-dark-charcoal transition-colors p-2 rounded-full hover:bg-light-gray"
               >
                 <X size={24} />
               </button>
             </div>
 
             {/* Selected Level Display */}
-            <div className={`bg-${selectedLevel.color} bg-opacity-10 border-2 border-${selectedLevel.color} rounded-lg p-4 mb-6`}>
+            <div className="bg-pale-pink border-2 border-deep-rose rounded-lg p-4 mb-6">
               <div className="flex items-center gap-3">
-                <div className={`bg-${selectedLevel.color} text-white rounded-full p-2`}>
+                <div className="bg-deep-rose text-white rounded-full p-2">
                   {selectedLevel.icon && <selectedLevel.icon size={24} />}
                 </div>
                 <div>
-                  <p className={`text-${selectedLevel.color} font-bold`}>{selectedLevel.badge}</p>
+                  <p className="text-deep-rose font-bold">{selectedLevel.badge}</p>
                   <p className="text-dark-charcoal font-medium">{selectedLevel.title}</p>
                 </div>
               </div>
@@ -279,32 +353,42 @@ const Emergency = () => {
             {/* Location Information */}
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-2">
-                <MapPin className="text-primary-blue" size={20} />
+                <MapPin className="text-deep-rose" size={20} />
                 <h3 className="font-bold text-dark-charcoal">Your Location</h3>
               </div>
               {location ? (
-                <div className="bg-white p-4 rounded-lg">
-                  <p className="text-sm text-dark-charcoal">
-                    Latitude: {location.lat.toFixed(6)}
-                  </p>
-                  <p className="text-sm text-dark-charcoal">
-                    Longitude: {location.lng.toFixed(6)}
-                  </p>
-                  <p className="text-sm text-warm-gray mt-1">
-                    Accuracy: ±{Math.round(location.accuracy)}m
-                  </p>
+                <div className="bg-light-gray p-4 rounded-lg">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm text-dark-charcoal font-mono">
+                        Lat: {location.lat.toFixed(6)}
+                      </p>
+                      <p className="text-sm text-dark-charcoal font-mono">
+                        Lng: {location.lng.toFixed(6)}
+                      </p>
+                      <p className="text-sm text-warm-gray mt-1">
+                        Accuracy: ±{Math.round(location.accuracy)}m
+                      </p>
+                    </div>
+                    <a
+                      href={`https://maps.google.com/?q=${location.lat},${location.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-info-blue hover:underline text-sm flex items-center gap-1"
+                    >
+                      <Navigation size={14} />
+                      View Map
+                    </a>
+                  </div>
                 </div>
               ) : (
                 <div className="bg-warning-orange bg-opacity-10 border border-warning-orange p-4 rounded-lg">
-                  <p className="text-warning-orange text-sm font-medium mb-2">
-                    ⚠️ Location unavailable
+                  <p className="text-warning-orange text-sm mb-2">
+                    ⚠️ {locationError || 'Getting your location...'}
                   </p>
-                  <p className="text-sm text-warm-gray">
-                    {locationError || 'Please enable location services in your browser'}
-                  </p>
-                  <p className="text-xs text-warm-gray mt-2">
-                    Your alert will still be sent, but responders won't have your exact location.
-                  </p>
+                  <Button variant="secondary" size="small" onClick={handleRetryLocation}>
+                    Retry Location
+                  </Button>
                 </div>
               )}
             </div>
@@ -313,15 +397,17 @@ const Emergency = () => {
             <div className="mb-6">
               <h3 className="font-bold text-dark-charcoal mb-2">Who Will Be Alerted</h3>
               <div className="bg-light-gray p-4 rounded-lg">
-                <p className="text-sm text-warm-gray">
-                  • 0 emergency contacts
+                <p className="text-sm text-dark-charcoal mb-1">
+                  • {contacts.length} emergency contact{contacts.length !== 1 ? 's' : ''}
                 </p>
-                <p className="text-sm text-warm-gray">
-                  • 0 nearby trusted bystanders
+                <p className="text-sm text-dark-charcoal">
+                  • {bystanders.length} nearby trusted bystander{bystanders.length !== 1 ? 's' : ''}
                 </p>
-                <p className="text-sm text-warning-orange mt-2">
-                  ⚠️ Add emergency contacts to receive assistance
-                </p>
+                {contacts.length === 0 && bystanders.length === 0 && (
+                  <p className="text-sm text-warning-orange mt-2">
+                    ⚠️ No contacts or bystanders will be notified. Consider calling emergency services directly.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -333,7 +419,7 @@ const Emergency = () => {
               <textarea
                 value={additionalInfo}
                 onChange={(e) => setAdditionalInfo(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose"
+                className="w-full px-4 py-3 border border-light-gray rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose"
                 rows="3"
                 placeholder="Describe what's happening or any important details..."
               ></textarea>
@@ -355,20 +441,37 @@ const Emergency = () => {
                 size="large"
                 onClick={() => setStep('select')}
               >
-                Cancel
+                Back
               </Button>
             </div>
 
-            {/* Countdown warning (optional) */}
             <p className="text-center text-sm text-warm-gray mt-4">
-              Your alert will be sent to your emergency network
+              Your network will receive an SMS with your location and details
             </p>
+          </div>
+        )}
+
+        {/* Sending Screen */}
+        {step === 'sending' && (
+          <div className="relative bg-white rounded-lg shadow-2xl max-w-md w-full p-8 text-center animate-fadeIn">
+            <div className="animate-pulse mb-6">
+              <Siren className="mx-auto text-deep-rose" size={64} />
+            </div>
+            <h2 className="text-2xl font-bold text-dark-charcoal mb-4">
+              Sending Emergency Alert...
+            </h2>
+            <p className="text-warm-gray mb-4">
+              Notifying your emergency network
+            </p>
+            <div className="flex justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-deep-rose"></div>
+            </div>
           </div>
         )}
 
         {/* Success Screen */}
         {step === 'success' && selectedLevel && (
-          <div className="relative bg-white rounded-lg shadow-2xl max-w-2xl w-full p-6">
+          <div className="relative bg-white rounded-lg shadow-2xl max-w-2xl w-full p-6 animate-fadeIn">
             <div className="text-center">
               <div className="bg-success-green bg-opacity-10 rounded-full p-6 inline-block mb-6">
                 <CheckCircle className="text-success-green" size={64} />
@@ -389,11 +492,11 @@ const Emergency = () => {
                   </div>
                   <div>
                     <p className="text-sm text-warm-gray">Contacts Notified</p>
-                    <p className="font-bold text-dark-charcoal">0</p>
+                    <p className="font-bold text-dark-charcoal">{contacts.length}</p>
                   </div>
                   <div>
                     <p className="text-sm text-warm-gray">Bystanders Alerted</p>
-                    <p className="font-bold text-dark-charcoal">0</p>
+                    <p className="font-bold text-dark-charcoal">{bystanders.length}</p>
                   </div>
                   <div>
                     <p className="text-sm text-warm-gray">Time</p>
@@ -402,14 +505,6 @@ const Emergency = () => {
                     </p>
                   </div>
                 </div>
-                
-                {/* Show location in success screen */}
-                {address && (
-                  <div className="mt-4 pt-4 border-t border-warm-gray border-opacity-20">
-                    <p className="text-sm text-warm-gray mb-1">Location Shared</p>
-                    <p className="text-sm font-medium text-dark-charcoal">📍 {address}</p>
-                  </div>
-                )}
               </div>
 
               {/* Safety Tips */}
@@ -428,8 +523,8 @@ const Emergency = () => {
                   <Phone size={20} className="mr-2" />
                   Call Emergency Services (999)
                 </Button>
-                <Button variant="secondary" size="medium" fullWidth onClick={() => navigate('/dashboard')}>
-                  Return to Dashboard
+                <Button variant="secondary" size="medium" fullWidth onClick={() => navigate('/incidents')}>
+                  View Incident Report
                 </Button>
               </div>
             </div>

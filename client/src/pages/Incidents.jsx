@@ -3,6 +3,7 @@ import { collection, getDocs, query, orderBy } from 'firebase/firestore'
 import { db } from '../utils/firebase'
 import { useAuth } from '../context/AuthContext'
 import Navbar from '../components/common/Navbar'
+import Sidebar from '../components/common/Sidebar'
 import FloatingActionButton from '../components/common/FloatingActionButton'
 import Card from '../components/common/Card'
 import { CheckCircle, MapPin, Clock, Users } from 'lucide-react'
@@ -37,10 +38,14 @@ const Incidents = () => {
   }
 
   return (
-    <div className="min-h-screen bg-pale-blue">
+    <div className="min-h-screen bg-light-gray">
       <Navbar isAuthenticated={true} />
 
-      <main className="max-w-7xl mx-auto p-6">
+      <div className="flex">
+        <Sidebar />
+
+        <main className="flex-1 p-6">
+          <div className="max-w-6xl mx-auto">
             <h1 className="text-3xl font-bold text-dark-charcoal mb-2">
               Incident Reports
             </h1>
@@ -154,7 +159,7 @@ const Incidents = () => {
                     </div>
 
                     {incident.alertDetails?.customNotes && (
-                      <div className="bg-white p-3 rounded-lg mb-4">
+                      <div className="bg-light-gray p-3 rounded-lg mb-4">
                         <p className="text-sm text-dark-charcoal">
                           <span className="font-medium">Notes: </span>
                           {incident.alertDetails.customNotes}
@@ -176,7 +181,9 @@ const Incidents = () => {
                 ))}
               </div>
             )}
-      </main>
+          </div>
+        </main>
+      </div>
 
       <FloatingActionButton />
     </div>

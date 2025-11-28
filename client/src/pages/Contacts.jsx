@@ -1,21 +1,24 @@
 import { useState, useEffect } from 'react'
-import { Plus, Phone, Mail, Edit, Trash2, CheckCircle, Clock } from 'lucide-react'
-import { collection, addDoc, getDocs, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
+import { Plus, Phone, Mail, Edit, Trash2, CheckCircle, Clock, Send } from 'lucide-react'
+import { collection, addDoc, getDocs, deleteDoc, doc, serverTimestamp, updateDoc } from 'firebase/firestore'
 import { db } from '../utils/firebase'
 import { useAuth } from '../context/AuthContext'
 import Navbar from '../components/common/Navbar'
+import Sidebar from '../components/common/Sidebar'
 import FloatingActionButton from '../components/common/FloatingActionButton'
 import Card from '../components/common/Card'
 import Button from '../components/common/Button'
 import Modal from '../components/common/Modal'
-import { validatePhoneNumber, formatPhoneNumber } from '../utils/validation'
+import { validatePhoneNumber, formatPhoneNumber, validateEmail, countryCodes } from '../utils/validation'
 import { getInitials } from '../utils/helpers'
 
 const Contacts = () => {
   const { currentUser } = useAuth()
   const [contacts, setContacts] = useState([])
   const [showAddModal, setShowAddModal] = useState(false)
+  const [editingContact, setEditingContact] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [selectedCountryCode, setSelectedCountryCode] = useState('254')
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -61,8 +64,18 @@ const Contacts = () => {
 
     if (!formData.phoneNumber) {
       newErrors.phoneNumber = 'Phone number is required'
-    } else if (!validatePhoneNumber(formData.phoneNumber)) {
-      newErrors.phoneNumber = 'Invalid phone number'
+    } else {
+      const fullPhone = formData.phoneNumber.startsWith('+') 
+        ? formData.phoneNumber 
+        : `+${selectedCountryCode}${formData.phoneNumber}`
+      
+      if (!validatePhoneNumber(fullPhone)) {
+        newErrors.phoneNumber = 'Invalid phone number format'
+      }
+    }
+
+    if (formData.email && !validateEmail(formData.email)) {
+      newErrors.email = 'Invalid email address'
     }
 
     setErrors(newErrors)
@@ -73,7 +86,7 @@ const Contacts = () => {
     e.preventDefault()
 
     if (!validateForm()) return
-    if (contacts.length >= 5) {
+    if (!editingContact && contacts.length >= 5) {
       alert('Maximum 5 contacts allowed')
       return
     }
@@ -81,31 +94,65 @@ const Contacts = () => {
     setLoading(true)
 
     try {
-      await addDoc(collection(db, 'users', currentUser.uid, 'emergencyContacts'), {
+      const fullPhone = formData.phoneNumber.startsWith('+') 
+        ? formData.phoneNumber 
+        : `+${selectedCountryCode}${formData.phoneNumber}`
+
+      const contactData = {
         fullName: formData.fullName,
         relationship: formData.relationship,
-        phoneNumber: formatPhoneNumber(formData.phoneNumber),
+        phoneNumber: formatPhoneNumber(fullPhone),
         email: formData.email,
         priority: formData.priority,
         verified: false,
-        createdAt: serverTimestamp(),
-      })
+        updatedAt: serverTimestamp(),
+      }
 
-      setFormData({
-        fullName: '',
-        relationship: 'Friend',
-        phoneNumber: '',
-        email: '',
-        priority: 'Primary',
-      })
-      setShowAddModal(false)
+      if (editingContact) {
+        // Update existing contact
+        await updateDoc(doc(db, 'users', currentUser.uid, 'emergencyContacts', editingContact.id), contactData)
+      } else {
+        // Add new contact
+        await addDoc(collection(db, 'users', currentUser.uid, 'emergencyContacts'), {
+          ...contactData,
+          createdAt: serverTimestamp(),
+        })
+      }
+
+      resetForm()
       fetchContacts()
     } catch (error) {
-      console.error('Error adding contact:', error)
-      alert('Failed to add contact')
+      console.error('Error saving contact:', error)
+      alert('Failed to save contact. Please try again.')
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleEdit = (contact) => {
+    setEditingContact(contact)
+    
+    // Extract country code and phone number
+    let phoneWithoutCode = contact.phoneNumber
+    let countryCode = '254'
+    
+    if (contact.phoneNumber.startsWith('+')) {
+      const match = contact.phoneNumber.match(/^\+(\d{1,3})(.+)/)
+      if (match) {
+        countryCode = match[1]
+        phoneWithoutCode = match[2]
+      }
+    }
+    
+    setSelectedCountryCode(countryCode)
+    setFormData({
+      fullName: contact.fullName,
+      relationship: contact.relationship,
+      phoneNumber: phoneWithoutCode,
+      email: contact.email || '',
+      priority: contact.priority,
+    })
+    setShowAddModal(true)
   }
 
   const handleDelete = async (contactId) => {
@@ -115,15 +162,46 @@ const Contacts = () => {
         fetchContacts()
       } catch (error) {
         console.error('Error deleting contact:', error)
+        alert('Failed to delete contact')
       }
     }
   }
 
+  const handleVerifyContact = async (contactId) => {
+    try {
+      await updateDoc(doc(db, 'users', currentUser.uid, 'emergencyContacts', contactId), {
+        verified: true,
+        verifiedAt: serverTimestamp(),
+      })
+      fetchContacts()
+    } catch (error) {
+      console.error('Error verifying contact:', error)
+    }
+  }
+
+  const resetForm = () => {
+    setFormData({
+      fullName: '',
+      relationship: 'Friend',
+      phoneNumber: '',
+      email: '',
+      priority: 'Primary',
+    })
+    setSelectedCountryCode('254')
+    setEditingContact(null)
+    setShowAddModal(false)
+    setErrors({})
+  }
+
   return (
-    <div className="min-h-screen bg-pale-blue">
+    <div className="min-h-screen bg-light-gray">
       <Navbar isAuthenticated={true} />
 
-      <main className="max-w-7xl mx-auto p-6">
+      <div className="flex">
+        <Sidebar />
+
+        <main className="flex-1 p-6">
+          <div className="max-w-6xl mx-auto">
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h1 className="text-3xl font-bold text-dark-charcoal mb-2">
@@ -153,7 +231,7 @@ const Contacts = () => {
                   {Math.round((contacts.length / 5) * 100)}%
                 </span>
               </div>
-              <div className="w-full bg-white rounded-full h-2">
+              <div className="w-full bg-light-gray rounded-full h-2">
                 <div
                   className="bg-deep-rose h-2 rounded-full transition-all duration-300"
                   style={{ width: `${(contacts.length / 5) * 100}%` }}
@@ -181,12 +259,12 @@ const Contacts = () => {
                   <Card key={contact.id} hover={true}>
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-12 w-12 bg-sky-blue rounded-full flex items-center justify-center text-deep-navy font-bold">
+                        <div className="h-12 w-12 bg-deep-rose rounded-full flex items-center justify-center text-white font-bold">
                           {getInitials(contact.fullName)}
                         </div>
                         <div>
                           <h3 className="font-bold text-dark-charcoal">{contact.fullName}</h3>
-                          <span className="text-xs bg-sky-blue bg-opacity-20 text-medium-blue px-2 py-1 rounded-full">
+                          <span className="text-xs bg-pale-pink text-deep-rose px-2 py-1 rounded-full">
                             {contact.relationship}
                           </span>
                         </div>
@@ -204,7 +282,7 @@ const Contacts = () => {
                       {contact.email && (
                         <div className="flex items-center gap-2 text-sm text-warm-gray">
                           <Mail size={16} />
-                          <span>{contact.email}</span>
+                          <span className="truncate">{contact.email}</span>
                         </div>
                       )}
                     </div>
@@ -216,20 +294,29 @@ const Contacts = () => {
                           <span>Verified</span>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2 text-warning-orange text-sm">
+                        <button
+                          onClick={() => handleVerifyContact(contact.id)}
+                          className="flex items-center gap-2 text-warning-orange text-sm hover:underline"
+                        >
                           <Clock size={16} />
-                          <span>Pending Verification</span>
-                        </div>
+                          <span>Click to Verify</span>
+                        </button>
                       )}
                     </div>
 
                     <div className="flex gap-2">
                       <button
                         onClick={() => window.location.href = `tel:${contact.phoneNumber}`}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-success-green text-white rounded-lg hover:bg-opacity-90 transition-colors"
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-success-green text-white rounded-lg hover:bg-opacity-90 transition-colors text-sm"
                       >
                         <Phone size={16} />
                         Call
+                      </button>
+                      <button
+                        onClick={() => handleEdit(contact)}
+                        className="px-3 py-2 bg-info-blue bg-opacity-10 text-info-blue rounded-lg hover:bg-opacity-20 transition-colors"
+                      >
+                        <Edit size={16} />
                       </button>
                       <button
                         onClick={() => handleDelete(contact.id)}
@@ -242,15 +329,17 @@ const Contacts = () => {
                 ))}
               </div>
             )}
-      </main>
+          </div>
+        </main>
+      </div>
 
       <FloatingActionButton />
 
-      {/* Add Contact Modal */}
+      {/* Add/Edit Contact Modal */}
       <Modal
         isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        title="Add Emergency Contact"
+        onClose={resetForm}
+        title={editingContact ? 'Edit Emergency Contact' : 'Add Emergency Contact'}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -293,14 +382,27 @@ const Contacts = () => {
             <label className="block text-sm font-medium text-dark-charcoal mb-2">
               Phone Number *
             </label>
-            <input
-              type="tel"
-              name="phoneNumber"
-              value={formData.phoneNumber}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-light-gray rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose"
-              placeholder="+254712345678"
-            />
+            <div className="flex gap-2">
+              <select
+                value={selectedCountryCode}
+                onChange={(e) => setSelectedCountryCode(e.target.value)}
+                className="px-3 py-2 border border-light-gray rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose"
+              >
+                {countryCodes.map((country) => (
+                  <option key={country.code} value={country.code}>
+                    {country.flag} +{country.code}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="tel"
+                name="phoneNumber"
+                value={formData.phoneNumber}
+                onChange={handleChange}
+                className="flex-1 px-4 py-2 border border-light-gray rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose"
+                placeholder="712345678"
+              />
+            </div>
             {errors.phoneNumber && (
               <p className="text-error-red text-sm mt-1">{errors.phoneNumber}</p>
             )}
@@ -318,6 +420,9 @@ const Contacts = () => {
               className="w-full px-4 py-2 border border-light-gray rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose"
               placeholder="jane@example.com"
             />
+            {errors.email && (
+              <p className="text-error-red text-sm mt-1">{errors.email}</p>
+            )}
           </div>
 
           <div>
@@ -333,13 +438,16 @@ const Contacts = () => {
               <option>Primary</option>
               <option>Secondary</option>
             </select>
+            <p className="text-sm text-warm-gray mt-1">
+              Primary contacts are notified first during emergencies
+            </p>
           </div>
 
           <div className="flex gap-4 pt-4">
             <Button type="submit" variant="primary" fullWidth disabled={loading}>
-              {loading ? 'Adding...' : 'Add Contact'}
+              {loading ? 'Saving...' : editingContact ? 'Update Contact' : 'Add Contact'}
             </Button>
-            <Button type="button" variant="secondary" onClick={() => setShowAddModal(false)}>
+            <Button type="button" variant="secondary" onClick={resetForm}>
               Cancel
             </Button>
           </div>

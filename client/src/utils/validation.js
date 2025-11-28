@@ -9,142 +9,42 @@ export const validatePassword = (password) => {
   return password.length >= 8
 }
 
-// Pan-African country codes (all 54 African countries)
-export const africanCountryCodes = {
-  '+20': { country: 'Egypt', length: [10] },
-  '+211': { country: 'South Sudan', length: [9] },
-  '+212': { country: 'Morocco/Western Sahara', length: [9] },
-  '+213': { country: 'Algeria', length: [9] },
-  '+216': { country: 'Tunisia', length: [8] },
-  '+218': { country: 'Libya', length: [10] },
-  '+220': { country: 'Gambia', length: [7] },
-  '+221': { country: 'Senegal', length: [9] },
-  '+222': { country: 'Mauritania', length: [8] },
-  '+223': { country: 'Mali', length: [8] },
-  '+224': { country: 'Guinea', length: [9] },
-  '+225': { country: 'Ivory Coast', length: [10] },
-  '+226': { country: 'Burkina Faso', length: [8] },
-  '+227': { country: 'Niger', length: [8] },
-  '+228': { country: 'Togo', length: [8] },
-  '+229': { country: 'Benin', length: [8] },
-  '+230': { country: 'Mauritius', length: [8] },
-  '+231': { country: 'Liberia', length: [7, 8] },
-  '+232': { country: 'Sierra Leone', length: [8] },
-  '+233': { country: 'Ghana', length: [9] },
-  '+234': { country: 'Nigeria', length: [10] },
-  '+235': { country: 'Chad', length: [8] },
-  '+236': { country: 'Central African Republic', length: [8] },
-  '+237': { country: 'Cameroon', length: [9] },
-  '+238': { country: 'Cape Verde', length: [7] },
-  '+239': { country: 'Sao Tome and Principe', length: [7] },
-  '+240': { country: 'Equatorial Guinea', length: [9] },
-  '+241': { country: 'Gabon', length: [7, 8] },
-  '+242': { country: 'Republic of Congo', length: [9] },
-  '+243': { country: 'Democratic Republic of Congo', length: [9] },
-  '+244': { country: 'Angola', length: [9] },
-  '+245': { country: 'Guinea-Bissau', length: [7] },
-  '+246': { country: 'British Indian Ocean Territory', length: [7] },
-  '+248': { country: 'Seychelles', length: [7] },
-  '+249': { country: 'Sudan', length: [9] },
-  '+250': { country: 'Rwanda', length: [9] },
-  '+251': { country: 'Ethiopia', length: [9] },
-  '+252': { country: 'Somalia', length: [8, 9] },
-  '+253': { country: 'Djibouti', length: [8] },
-  '+254': { country: 'Kenya', length: [9] },
-  '+255': { country: 'Tanzania', length: [9] },
-  '+256': { country: 'Uganda', length: [9] },
-  '+257': { country: 'Burundi', length: [8] },
-  '+258': { country: 'Mozambique', length: [9] },
-  '+260': { country: 'Zambia', length: [9] },
-  '+261': { country: 'Madagascar', length: [9, 10] },
-  '+262': { country: 'Reunion/Mayotte', length: [9] },
-  '+263': { country: 'Zimbabwe', length: [9] },
-  '+264': { country: 'Namibia', length: [9] },
-  '+265': { country: 'Malawi', length: [9] },
-  '+266': { country: 'Lesotho', length: [8] },
-  '+267': { country: 'Botswana', length: [8] },
-  '+268': { country: 'Eswatini', length: [8] },
-  '+269': { country: 'Comoros', length: [7] },
-  '+27': { country: 'South Africa', length: [9] },
-  '+290': { country: 'Saint Helena', length: [4] },
-  '+291': { country: 'Eritrea', length: [7] },
-}
-
-// Phone number validation (Pan-African)
+// International phone number validation (supports multiple countries)
 export const validatePhoneNumber = (phone) => {
-  const cleaned = phone.replace(/[\s\-()]/g, '')
-
-  // Check if starts with +
-  if (!cleaned.startsWith('+')) {
-    // If starts with 0, it's likely a local number (Kenya)
-    if (cleaned.startsWith('0')) {
-      return /^0[17]\d{8}$/.test(cleaned)
-    }
-    return false
-  }
-
-  // Find matching country code
-  for (const [code, info] of Object.entries(africanCountryCodes)) {
-    if (cleaned.startsWith(code)) {
-      const numberWithoutCode = cleaned.substring(code.length)
-      const isValidLength = info.length.includes(numberWithoutCode.length)
-      const isNumeric = /^\d+$/.test(numberWithoutCode)
-      return isValidLength && isNumeric
-    }
-  }
-
-  return false
+  // Remove all spaces, dashes, and parentheses
+  const cleaned = phone.replace(/[\s\-\(\)]/g, '')
+  
+  // Check if it's a valid international format
+  // Must start with + followed by 1-3 digit country code and 4-15 digits
+  const internationalRegex = /^\+[1-9]\d{6,14}$/
+  
+  // Or check if it's a Kenya local format (starting with 0)
+  const kenyaLocalRegex = /^0[17]\d{8}$/
+  
+  return internationalRegex.test(cleaned) || kenyaLocalRegex.test(cleaned)
 }
 
 // Format phone number to E.164 standard
-export const formatPhoneNumber = (phone) => {
-  const cleaned = phone.replace(/[\s\-()]/g, '')
-
-  // If it starts with 0, assume it's a Kenyan number
-  if (cleaned.startsWith('0')) {
-    return '+254' + cleaned.substring(1)
-  }
-
-  // If it already starts with +, return as is
+export const formatPhoneNumber = (phone, defaultCountryCode = '254') => {
+  // Remove all spaces, dashes, and parentheses
+  const cleaned = phone.replace(/[\s\-\(\)]/g, '')
+  
+  // If already in international format, return as is
   if (cleaned.startsWith('+')) {
     return cleaned
   }
-
-  // Otherwise, add + prefix
-  return '+' + cleaned
-}
-
-// Detect country from phone number
-export const detectCountry = (phone) => {
-  const cleaned = phone.replace(/[\s\-()]/g, '')
-
-  for (const [code, info] of Object.entries(africanCountryCodes)) {
-    if (cleaned.startsWith(code)) {
-      return info.country
-    }
+  
+  // If starts with 0 (Kenya local format), replace with +254
+  if (cleaned.startsWith('0')) {
+    return '+' + defaultCountryCode + cleaned.substring(1)
   }
-
-  return null
-}
-
-// Get validation error message
-export const getPhoneValidationError = (phone) => {
-  const cleaned = phone.replace(/[\s\-()]/g, '')
-
-  if (!cleaned) {
-    return 'Phone number is required'
+  
+  // If no country code, add default
+  if (!cleaned.startsWith('+')) {
+    return '+' + cleaned
   }
-
-  if (!cleaned.startsWith('+') && !cleaned.startsWith('0')) {
-    return 'Phone number must start with + (country code) or 0 (local)'
-  }
-
-  const country = detectCountry(cleaned)
-  if (country) {
-    return `Invalid phone number format for ${country}`
-  }
-
-  return 'Invalid phone number. Use format: +XXX XXXXXXXXX (e.g., +254 712 345 678)'
+  
+  return cleaned
 }
 
 // Check password strength
@@ -160,3 +60,27 @@ export const getPasswordStrength = (password) => {
   if (strength <= 3) return { level: 'medium', color: 'warning-orange' }
   return { level: 'strong', color: 'success-green' }
 }
+
+// Get country code from phone number
+export const getCountryCode = (phone) => {
+  const cleaned = phone.replace(/[\s\-\(\)]/g, '')
+  if (cleaned.startsWith('+')) {
+    const match = cleaned.match(/^\+(\d{1,3})/)
+    return match ? match[1] : '1'
+  }
+  return '254' // Default to Kenya
+}
+
+// Common country codes for dropdown
+export const countryCodes = [
+  { code: '1', name: 'United States/Canada', flag: '🇺🇸' },
+  { code: '44', name: 'United Kingdom', flag: '🇬🇧' },
+  { code: '254', name: 'Kenya', flag: '🇰🇪' },
+  { code: '255', name: 'Tanzania', flag: '🇹🇿' },
+  { code: '256', name: 'Uganda', flag: '🇺🇬' },
+  { code: '27', name: 'South Africa', flag: '🇿🇦' },
+  { code: '234', name: 'Nigeria', flag: '🇳🇬' },
+  { code: '233', name: 'Ghana', flag: '🇬🇭' },
+  { code: '91', name: 'India', flag: '🇮🇳' },
+  { code: '86', name: 'China', flag: '🇨🇳' },
+]
