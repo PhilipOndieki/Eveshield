@@ -14,6 +14,9 @@ const Emergency = () => {
   const [step, setStep] = useState('select') // select, confirm, success
   const [selectedLevel, setSelectedLevel] = useState(null)
   const [location, setLocation] = useState(null)
+  const [locationError, setLocationError] = useState(null)
+  const [address, setAddress] = useState(null)
+  const [loadingAddress, setLoadingAddress] = useState(false)
   const [additionalInfo, setAdditionalInfo] = useState('')
   const [loading, setLoading] = useState(false)
   const [incidentId, setIncidentId] = useState(null)
@@ -48,21 +51,91 @@ const Emergency = () => {
     },
   ]
 
-  // Get user's location
+  // Convert coordinates to readable address
+  const getAddressFromCoordinates = async (lat, lng) => {
+    setLoadingAddress(true)
+    try {
+      // Using OpenStreetMap Nominatim (free, no API key needed)
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'EveShield-Emergency-App'
+          }
+        }
+      )
+      const data = await response.json()
+      
+      if (data && data.address) {
+        const addr = data.address
+        // Build readable address
+        const parts = [
+          addr.road || addr.street,
+          addr.suburb || addr.neighbourhood || addr.quarter,
+          addr.city || addr.town || addr.village,
+          addr.county || addr.state_district,
+          addr.country
+        ].filter(Boolean) // Remove undefined values
+        
+        setAddress(parts.join(', '))
+      } else {
+        setAddress(`Coordinates: ${lat.toFixed(4)}, ${lng.toFixed(4)}`)
+      }
+    } catch (error) {
+      console.error('Error getting address:', error)
+      setAddress(`Coordinates: ${lat.toFixed(4)}, ${lng.toFixed(4)}`)
+    } finally {
+      setLoadingAddress(false)
+    }
+  }
+
+  // Get user's location with better error handling
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
+          const lat = position.coords.latitude
+          const lng = position.coords.longitude
+          
           setLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
+            lat: lat,
+            lng: lng,
             accuracy: position.coords.accuracy,
           })
+          setLocationError(null)
+          
+          // Get human-readable address
+          await getAddressFromCoordinates(lat, lng)
         },
         (error) => {
           console.error('Error getting location:', error)
+          let errorMessage = 'Unable to get location'
+          
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = 'Location access denied. Please enable location in your browser settings.'
+              break
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = 'Location information unavailable.'
+              break
+            case error.TIMEOUT:
+              errorMessage = 'Location request timed out.'
+              break
+            default:
+              errorMessage = 'An unknown error occurred.'
+          }
+          
+          setLocationError(errorMessage)
+          setLocation(null)
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
         }
       )
+    } else {
+      setLocationError('Geolocation not supported by this browser')
     }
   }, [])
 
@@ -82,7 +155,16 @@ const Emergency = () => {
         severity: selectedLevel.level,
         status: 'active',
         triggeredAt: serverTimestamp(),
-        location: location || { lat: 0, lng: 0, address: 'Location unavailable' },
+        location: location ? {
+          lat: location.lat,
+          lng: location.lng,
+          accuracy: location.accuracy,
+          address: address || 'Address lookup failed'
+        } : { 
+          lat: 0, 
+          lng: 0, 
+          address: 'Location unavailable' 
+        },
         alertDetails: {
           description: selectedLevel.description,
           customNotes: additionalInfo,
@@ -147,8 +229,11 @@ const Emergency = () => {
                   <button
                     key={level.level}
                     onClick={() => handleLevelSelect(level)}
-                    className={`bg-${level.color} hover:opacity-90 transition-all duration-200 hover:scale-105 rounded-lg p-6 text-white text-left`}
-                  >
+                    style={{
+                      backgroundColor: level.level === 1 ? '#F59E0B' : level.level === 2 ? '#EF4444' : '#DC2626'
+                    }}
+                    className="hover:opacity-90 transition-all duration-200 hover:scale-105 rounded-lg p-6 text-white text-left shadow-lg"
+                  >                  
                     <div className="bg-white bg-opacity-20 rounded-full p-3 inline-block mb-4">
                       <Icon size={32} />
                     </div>
@@ -194,25 +279,46 @@ const Emergency = () => {
             {/* Location Information */}
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-2">
-                <MapPin className="text-deep-rose" size={20} />
+                <MapPin className="text-primary-blue" size={20} />
                 <h3 className="font-bold text-dark-charcoal">Your Location</h3>
               </div>
               {location ? (
                 <div className="bg-light-gray p-4 rounded-lg">
-                  <p className="text-sm text-dark-charcoal">
-                    Latitude: {location.lat.toFixed(6)}
-                  </p>
-                  <p className="text-sm text-dark-charcoal">
-                    Longitude: {location.lng.toFixed(6)}
-                  </p>
-                  <p className="text-sm text-warm-gray mt-1">
-                    Accuracy: ±{Math.round(location.accuracy)}m
-                  </p>
+                  {loadingAddress ? (
+                    <p className="text-sm text-warm-gray">📍 Getting your location...</p>
+                  ) : address ? (
+                    <>
+                      <p className="text-sm font-medium text-dark-charcoal mb-2">
+                        📍 {address}
+                      </p>
+                      <p className="text-xs text-warm-gray">
+                        Accuracy: ±{Math.round(location.accuracy)}m
+                      </p>
+                      <details className="mt-2">
+                        <summary className="text-xs text-warm-gray cursor-pointer hover:text-dark-charcoal">
+                          Show coordinates
+                        </summary>
+                        <p className="text-xs text-warm-gray mt-1 font-mono">
+                          {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
+                        </p>
+                      </details>
+                    </>
+                  ) : (
+                    <p className="text-sm text-dark-charcoal">
+                      📍 Coordinates: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="bg-warning-orange bg-opacity-10 border border-warning-orange p-4 rounded-lg">
-                  <p className="text-warning-orange text-sm">
-                    ⚠️ Location unavailable. Enable location services for better assistance.
+                  <p className="text-warning-orange text-sm font-medium mb-2">
+                    ⚠️ Location unavailable
+                  </p>
+                  <p className="text-sm text-warm-gray">
+                    {locationError || 'Please enable location services in your browser'}
+                  </p>
+                  <p className="text-xs text-warm-gray mt-2">
+                    Your alert will still be sent, but responders won't have your exact location.
                   </p>
                 </div>
               )}
@@ -242,7 +348,7 @@ const Emergency = () => {
               <textarea
                 value={additionalInfo}
                 onChange={(e) => setAdditionalInfo(e.target.value)}
-                className="w-full px-4 py-3 border border-light-gray rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose"
+                className="w-full px-4 py-3 border border-light-gray rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-blue"
                 rows="3"
                 placeholder="Describe what's happening or any important details..."
               ></textarea>
@@ -311,6 +417,14 @@ const Emergency = () => {
                     </p>
                   </div>
                 </div>
+                
+                {/* Show location in success screen */}
+                {address && (
+                  <div className="mt-4 pt-4 border-t border-warm-gray border-opacity-20">
+                    <p className="text-sm text-warm-gray mb-1">Location Shared</p>
+                    <p className="text-sm font-medium text-dark-charcoal">📍 {address}</p>
+                  </div>
+                )}
               </div>
 
               {/* Safety Tips */}
