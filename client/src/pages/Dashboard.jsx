@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, Users, Shield, ClipboardList, Phone, TrendingUp } from 'lucide-react'
 import Navbar from '../components/common/Navbar'
-import Sidebar from '../components/common/Sidebar'
 import FloatingActionButton from '../components/common/FloatingActionButton'
 import Card from '../components/common/Card'
 import Button from '../components/common/Button'
@@ -12,33 +11,30 @@ const Dashboard = () => {
   const { userProfile } = useAuth()
 
   return (
-    <div className="min-h-screen bg-light-gray">
+    <div className="min-h-screen bg-pale-blue">
       <Navbar isAuthenticated={true} />
 
-      <div className="flex">
-        <Sidebar />
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto p-6">
+        {/* Welcome Message */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-dark-charcoal mb-2">
+            Welcome back, {userProfile?.fullName || 'User'}
+          </h1>
+          <p className="text-warm-gray">
+            Your safety network is here to protect you
+          </p>
+        </div>
 
-        {/* Main Content */}
-        <main className="flex-1 p-6">
-          {/* Welcome Message */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-dark-charcoal mb-2">
-              Welcome back, {userProfile?.fullName || 'User'}
-            </h1>
-            <p className="text-warm-gray">
-              Your safety network is here to protect you
-            </p>
-          </div>
-
-          {/* Dashboard Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Emergency Quick Access Card */}
-            <Card
-              className="md:col-span-2 lg:col-span-3 bg-gradient-to-r from-deep-rose to-pink-600"
-              padding="large"
-              hover={true}
-              onClick={() => navigate('/emergency')}
-            >
+        {/* Dashboard Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Emergency Quick Access Card */}
+          <Card
+            className="md:col-span-2 lg:col-span-3 bg-gradient-to-r from-deep-rose to-error-red"
+            padding="large"
+            hover={true}
+            onClick={() => navigate('/emergency')}
+          >
               <div className="flex items-center justify-between text-white">
                 <div>
                   <div className="flex items-center gap-3 mb-4">
@@ -168,19 +164,19 @@ const Dashboard = () => {
                 <h3 className="text-xl font-bold text-dark-charcoal">Quick Resources</h3>
               </div>
               <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="bg-pale-pink p-4 rounded-lg hover:bg-opacity-70 transition-colors cursor-pointer">
+                <div className="bg-sky-blue bg-opacity-20 p-4 rounded-lg hover:bg-opacity-30 transition-colors cursor-pointer">
                   <p className="font-medium text-dark-charcoal">GBV Hotline</p>
                   <p className="text-sm text-deep-rose font-bold">1195</p>
                 </div>
-                <div className="bg-pale-pink p-4 rounded-lg hover:bg-opacity-70 transition-colors cursor-pointer">
+                <div className="bg-sky-blue bg-opacity-20 p-4 rounded-lg hover:bg-opacity-30 transition-colors cursor-pointer">
                   <p className="font-medium text-dark-charcoal">Police Emergency</p>
                   <p className="text-sm text-deep-rose font-bold">999</p>
                 </div>
-                <div className="bg-pale-pink p-4 rounded-lg hover:bg-opacity-70 transition-colors cursor-pointer">
+                <div className="bg-sky-blue bg-opacity-20 p-4 rounded-lg hover:bg-opacity-30 transition-colors cursor-pointer">
                   <p className="font-medium text-dark-charcoal">Ambulance</p>
                   <p className="text-sm text-deep-rose font-bold">999</p>
                 </div>
-                <div className="bg-pale-pink p-4 rounded-lg hover:bg-opacity-70 transition-colors cursor-pointer">
+                <div className="bg-sky-blue bg-opacity-20 p-4 rounded-lg hover:bg-opacity-30 transition-colors cursor-pointer">
                   <p className="font-medium text-dark-charcoal">Safe Houses</p>
                   <p className="text-sm text-deep-rose">Find nearby</p>
                 </div>
@@ -190,45 +186,44 @@ const Dashboard = () => {
               </Button>
             </Card>
 
-            {/* Getting Started Card */}
-            <Card className="md:col-span-2 lg:col-span-3" borderColor="deep-rose">
-              <h3 className="text-xl font-bold text-dark-charcoal mb-4">
-                Complete Your Safety Setup
-              </h3>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 p-3 bg-light-gray rounded-lg">
-                  <input
-                    type="checkbox"
-                    className="h-5 w-5 text-deep-rose focus:ring-deep-rose border-gray-300 rounded"
-                  />
-                  <span className="text-dark-charcoal">Add at least 3 emergency contacts</span>
-                </div>
-                <div className="flex items-center gap-3 p-3 bg-light-gray rounded-lg">
-                  <input
-                    type="checkbox"
-                    className="h-5 w-5 text-deep-rose focus:ring-deep-rose border-gray-300 rounded"
-                  />
-                  <span className="text-dark-charcoal">Invite trusted bystanders to your network</span>
-                </div>
-                <div className="flex items-center gap-3 p-3 bg-light-gray rounded-lg">
-                  <input
-                    type="checkbox"
-                    className="h-5 w-5 text-deep-rose focus:ring-deep-rose border-gray-300 rounded"
-                  />
-                  <span className="text-dark-charcoal">Test your emergency alert system</span>
-                </div>
-                <div className="flex items-center gap-3 p-3 bg-light-gray rounded-lg">
-                  <input
-                    type="checkbox"
-                    className="h-5 w-5 text-deep-rose focus:ring-deep-rose border-gray-300 rounded"
-                  />
-                  <span className="text-dark-charcoal">Explore support resources in your area</span>
-                </div>
+          {/* Getting Started Card */}
+          <Card className="md:col-span-2 lg:col-span-3" borderColor="deep-rose">
+            <h3 className="text-xl font-bold text-dark-charcoal mb-4">
+              Complete Your Safety Setup
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 bg-white rounded-lg">
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 text-deep-rose focus:ring-deep-rose border-gray-300 rounded"
+                />
+                <span className="text-dark-charcoal">Add at least 3 emergency contacts</span>
               </div>
-            </Card>
-          </div>
-        </main>
-      </div>
+              <div className="flex items-center gap-3 p-3 bg-white rounded-lg">
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 text-deep-rose focus:ring-deep-rose border-gray-300 rounded"
+                />
+                <span className="text-dark-charcoal">Invite trusted bystanders to your network</span>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-white rounded-lg">
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 text-deep-rose focus:ring-deep-rose border-gray-300 rounded"
+                />
+                <span className="text-dark-charcoal">Test your emergency alert system</span>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-white rounded-lg">
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 text-deep-rose focus:ring-deep-rose border-gray-300 rounded"
+                />
+                <span className="text-dark-charcoal">Explore support resources in your area</span>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </main>
 
       {/* Floating Action Button */}
       <FloatingActionButton />

@@ -3,7 +3,6 @@ import { User, Lock, Bell, Shield, Settings as SettingsIcon, LogOut } from 'luci
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Navbar from '../components/common/Navbar'
-import Sidebar from '../components/common/Sidebar'
 import FloatingActionButton from '../components/common/FloatingActionButton'
 import Card from '../components/common/Card'
 import Button from '../components/common/Button'
@@ -33,14 +32,10 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-light-gray">
+    <div className="min-h-screen bg-pale-blue">
       <Navbar isAuthenticated={true} />
 
-      <div className="flex">
-        <Sidebar />
-
-        <main className="flex-1 p-6">
-          <div className="max-w-6xl mx-auto">
+      <main className="max-w-7xl mx-auto p-6">
             <h1 className="text-3xl font-bold text-dark-charcoal mb-8">
               Profile & Settings
             </h1>
@@ -58,8 +53,8 @@ const Profile = () => {
                           onClick={() => setActiveTab(tab.id)}
                           className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                             activeTab === tab.id
-                              ? 'bg-pale-pink text-deep-rose'
-                              : 'text-warm-gray hover:bg-light-gray'
+                              ? 'bg-sky-blue bg-opacity-20 text-medium-blue'
+                              : 'text-warm-gray hover:bg-white'
                           }`}
                         >
                           <Icon size={20} />
@@ -88,7 +83,7 @@ const Profile = () => {
                     </h2>
 
                     <div className="flex items-center gap-4 mb-8">
-                      <div className="h-20 w-20 bg-deep-rose rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                      <div className="h-20 w-20 bg-sky-blue rounded-full flex items-center justify-center text-deep-navy text-2xl font-bold">
                         {userProfile?.fullName?.charAt(0) || 'U'}
                       </div>
                       <div>
@@ -106,7 +101,7 @@ const Profile = () => {
                         <input
                           type="text"
                           defaultValue={userProfile?.fullName || ''}
-                          className="w-full px-4 py-3 border border-light-gray rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-blue"
                         />
                       </div>
 
@@ -117,7 +112,7 @@ const Profile = () => {
                         <input
                           type="email"
                           defaultValue={currentUser?.email || ''}
-                          className="w-full px-4 py-3 border border-light-gray rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose bg-light-gray"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-blue bg-gray-100"
                           disabled
                         />
                         <p className="text-sm text-warm-gray mt-1">
@@ -132,7 +127,7 @@ const Profile = () => {
                         <input
                           type="tel"
                           defaultValue={userProfile?.phoneNumber || ''}
-                          className="w-full px-4 py-3 border border-light-gray rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-blue"
                         />
                       </div>
 
@@ -142,7 +137,7 @@ const Profile = () => {
                         </label>
                         <textarea
                           rows="2"
-                          className="w-full px-4 py-3 border border-light-gray rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-blue"
                           placeholder="City, Country"
                         ></textarea>
                       </div>
@@ -171,7 +166,7 @@ const Profile = () => {
                         </Button>
                       </div>
 
-                      <hr className="border-light-gray" />
+                      <hr className="border-gray-200" />
 
                       <div>
                         <h3 className="font-bold text-dark-charcoal mb-4">
@@ -183,19 +178,19 @@ const Profile = () => {
                               <p className="font-medium text-dark-charcoal">Location Sharing</p>
                               <p className="text-sm text-warm-gray">Allow location access during emergencies</p>
                             </div>
-                            <input type="checkbox" defaultChecked className="h-5 w-5 text-deep-rose focus:ring-deep-rose border-gray-300 rounded" />
+                            <input type="checkbox" defaultChecked className="h-5 w-5 text-sky-blue focus:ring-sky-blue border-gray-300 rounded" />
                           </div>
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="font-medium text-dark-charcoal">Profile Visibility</p>
                               <p className="text-sm text-warm-gray">Allow others to find you by phone/email</p>
                             </div>
-                            <input type="checkbox" className="h-5 w-5 text-deep-rose focus:ring-deep-rose border-gray-300 rounded" />
+                            <input type="checkbox" className="h-5 w-5 text-sky-blue focus:ring-sky-blue border-gray-300 rounded" />
                           </div>
                         </div>
                       </div>
 
-                      <hr className="border-light-gray" />
+                      <hr className="border-gray-200" />
 
                       <div>
                         <h3 className="font-bold text-dark-charcoal mb-4">
@@ -232,26 +227,26 @@ const Profile = () => {
                               <p className="font-medium text-dark-charcoal">Emergency Alert Sounds</p>
                               <p className="text-sm text-warm-gray">Play sound for emergency alerts</p>
                             </div>
-                            <input type="checkbox" defaultChecked className="h-5 w-5 text-deep-rose focus:ring-deep-rose border-gray-300 rounded" />
+                            <input type="checkbox" defaultChecked className="h-5 w-5 text-sky-blue focus:ring-sky-blue border-gray-300 rounded" />
                           </div>
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="font-medium text-dark-charcoal">Vibration</p>
                               <p className="text-sm text-warm-gray">Enable haptic feedback</p>
                             </div>
-                            <input type="checkbox" defaultChecked className="h-5 w-5 text-deep-rose focus:ring-deep-rose border-gray-300 rounded" />
+                            <input type="checkbox" defaultChecked className="h-5 w-5 text-sky-blue focus:ring-sky-blue border-gray-300 rounded" />
                           </div>
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="font-medium text-dark-charcoal">Push Notifications</p>
                               <p className="text-sm text-warm-gray">Receive push notifications</p>
                             </div>
-                            <input type="checkbox" defaultChecked className="h-5 w-5 text-deep-rose focus:ring-deep-rose border-gray-300 rounded" />
+                            <input type="checkbox" defaultChecked className="h-5 w-5 text-sky-blue focus:ring-sky-blue border-gray-300 rounded" />
                           </div>
                         </div>
                       </div>
 
-                      <hr className="border-light-gray" />
+                      <hr className="border-gray-200" />
 
                       <div>
                         <h3 className="font-bold text-dark-charcoal mb-4">
@@ -263,14 +258,14 @@ const Profile = () => {
                               <p className="font-medium text-dark-charcoal">Safety Tips & Resources</p>
                               <p className="text-sm text-warm-gray">Weekly safety tips email</p>
                             </div>
-                            <input type="checkbox" defaultChecked className="h-5 w-5 text-deep-rose focus:ring-deep-rose border-gray-300 rounded" />
+                            <input type="checkbox" defaultChecked className="h-5 w-5 text-sky-blue focus:ring-sky-blue border-gray-300 rounded" />
                           </div>
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="font-medium text-dark-charcoal">Monthly Safety Report</p>
                               <p className="text-sm text-warm-gray">Summary of your safety activity</p>
                             </div>
-                            <input type="checkbox" className="h-5 w-5 text-deep-rose focus:ring-deep-rose border-gray-300 rounded" />
+                            <input type="checkbox" className="h-5 w-5 text-sky-blue focus:ring-sky-blue border-gray-300 rounded" />
                           </div>
                         </div>
                       </div>
@@ -300,26 +295,26 @@ const Profile = () => {
                               <p className="font-medium text-dark-charcoal">Quick SOS Gesture</p>
                               <p className="text-sm text-warm-gray">Press power button 5 times to trigger alert</p>
                             </div>
-                            <input type="checkbox" className="h-5 w-5 text-deep-rose focus:ring-deep-rose border-gray-300 rounded" />
+                            <input type="checkbox" className="h-5 w-5 text-sky-blue focus:ring-sky-blue border-gray-300 rounded" />
                           </div>
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="font-medium text-dark-charcoal">Silent Alarm Mode</p>
                               <p className="text-sm text-warm-gray">Trigger alert without sound</p>
                             </div>
-                            <input type="checkbox" className="h-5 w-5 text-deep-rose focus:ring-deep-rose border-gray-300 rounded" />
+                            <input type="checkbox" className="h-5 w-5 text-sky-blue focus:ring-sky-blue border-gray-300 rounded" />
                           </div>
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="font-medium text-dark-charcoal">Auto-record Audio</p>
                               <p className="text-sm text-warm-gray">Record audio during alerts for evidence</p>
                             </div>
-                            <input type="checkbox" className="h-5 w-5 text-deep-rose focus:ring-deep-rose border-gray-300 rounded" />
+                            <input type="checkbox" className="h-5 w-5 text-sky-blue focus:ring-sky-blue border-gray-300 rounded" />
                           </div>
                         </div>
                       </div>
 
-                      <hr className="border-light-gray" />
+                      <hr className="border-gray-200" />
 
                       <div>
                         <h3 className="font-bold text-dark-charcoal mb-4">
@@ -383,14 +378,14 @@ const Profile = () => {
                               <p className="font-medium text-dark-charcoal">High Contrast Mode</p>
                               <p className="text-sm text-warm-gray">Increase contrast for better visibility</p>
                             </div>
-                            <input type="checkbox" className="h-5 w-5 text-deep-rose focus:ring-deep-rose border-gray-300 rounded" />
+                            <input type="checkbox" className="h-5 w-5 text-sky-blue focus:ring-sky-blue border-gray-300 rounded" />
                           </div>
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="font-medium text-dark-charcoal">Large Touch Targets</p>
                               <p className="text-sm text-warm-gray">Make buttons and links easier to tap</p>
                             </div>
-                            <input type="checkbox" className="h-5 w-5 text-deep-rose focus:ring-deep-rose border-gray-300 rounded" />
+                            <input type="checkbox" className="h-5 w-5 text-sky-blue focus:ring-sky-blue border-gray-300 rounded" />
                           </div>
                         </div>
                       </div>
@@ -403,9 +398,7 @@ const Profile = () => {
                 )}
               </div>
             </div>
-          </div>
-        </main>
-      </div>
+      </main>
 
       <FloatingActionButton />
     </div>

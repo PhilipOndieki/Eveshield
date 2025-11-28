@@ -198,7 +198,7 @@ const Emergency = () => {
                 <h3 className="font-bold text-dark-charcoal">Your Location</h3>
               </div>
               {location ? (
-                <div className="bg-light-gray p-4 rounded-lg">
+                <div className="bg-white p-4 rounded-lg">
                   <p className="text-sm text-dark-charcoal">
                     Latitude: {location.lat.toFixed(6)}
                   </p>
@@ -242,7 +242,7 @@ const Emergency = () => {
               <textarea
                 value={additionalInfo}
                 onChange={(e) => setAdditionalInfo(e.target.value)}
-                className="w-full px-4 py-3 border border-light-gray rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose"
                 rows="3"
                 placeholder="Describe what's happening or any important details..."
               ></textarea>
