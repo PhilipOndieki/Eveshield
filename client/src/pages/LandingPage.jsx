@@ -56,7 +56,9 @@ const LandingPage = () => {
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-8 drop-shadow-lg">
               Safety isn’t a Privilege, it’s a Button.
             </h1>
- 
+            <p className="text-xl md:text-2xl text-white mb-12 drop-shadow-md max-w-2xl mx-auto">
+              
+            </p>
             
             {/* Error message if Google sign-in fails */}
             {error && (
@@ -74,6 +76,10 @@ const LandingPage = () => {
             >
               {loading ? 'Loading...' : 'Build Your Safety Circle'}
             </Button>
+            
+            <p className="text-white text-sm mt-4 opacity-90">
+              
+            </p>
           </div>
 
           {/* Scroll Indicator */}

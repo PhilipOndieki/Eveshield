@@ -4,7 +4,6 @@ import { collection, addDoc, getDocs, deleteDoc, doc, serverTimestamp } from 'fi
 import { db } from '../utils/firebase'
 import { useAuth } from '../context/AuthContext'
 import Navbar from '../components/common/Navbar'
-import Sidebar from '../components/common/Sidebar'
 import FloatingActionButton from '../components/common/FloatingActionButton'
 import Card from '../components/common/Card'
 import Button from '../components/common/Button'
@@ -121,14 +120,10 @@ const Contacts = () => {
   }
 
   return (
-    <div className="min-h-screen bg-light-gray">
+    <div className="min-h-screen bg-pale-blue">
       <Navbar isAuthenticated={true} />
 
-      <div className="flex">
-        <Sidebar />
-
-        <main className="flex-1 p-6">
-          <div className="max-w-6xl mx-auto">
+      <main className="max-w-7xl mx-auto p-6">
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h1 className="text-3xl font-bold text-dark-charcoal mb-2">
@@ -158,7 +153,7 @@ const Contacts = () => {
                   {Math.round((contacts.length / 5) * 100)}%
                 </span>
               </div>
-              <div className="w-full bg-light-gray rounded-full h-2">
+              <div className="w-full bg-white rounded-full h-2">
                 <div
                   className="bg-deep-rose h-2 rounded-full transition-all duration-300"
                   style={{ width: `${(contacts.length / 5) * 100}%` }}
@@ -186,12 +181,12 @@ const Contacts = () => {
                   <Card key={contact.id} hover={true}>
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-12 w-12 bg-deep-rose rounded-full flex items-center justify-center text-white font-bold">
+                        <div className="h-12 w-12 bg-sky-blue rounded-full flex items-center justify-center text-deep-navy font-bold">
                           {getInitials(contact.fullName)}
                         </div>
                         <div>
                           <h3 className="font-bold text-dark-charcoal">{contact.fullName}</h3>
-                          <span className="text-xs bg-pale-pink text-deep-rose px-2 py-1 rounded-full">
+                          <span className="text-xs bg-sky-blue bg-opacity-20 text-medium-blue px-2 py-1 rounded-full">
                             {contact.relationship}
                           </span>
                         </div>
@@ -247,9 +242,7 @@ const Contacts = () => {
                 ))}
               </div>
             )}
-          </div>
-        </main>
-      </div>
+      </main>
 
       <FloatingActionButton />
 

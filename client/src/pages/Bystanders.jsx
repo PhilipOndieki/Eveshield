@@ -1,5 +1,4 @@
 import Navbar from '../components/common/Navbar'
-import Sidebar from '../components/common/Sidebar'
 import FloatingActionButton from '../components/common/FloatingActionButton'
 import Card from '../components/common/Card'
 import Button from '../components/common/Button'
@@ -7,14 +6,10 @@ import { Shield, UserPlus, Info } from 'lucide-react'
 
 const Bystanders = () => {
   return (
-    <div className="min-h-screen bg-light-gray">
+    <div className="min-h-screen bg-pale-blue">
       <Navbar isAuthenticated={true} />
 
-      <div className="flex">
-        <Sidebar />
-
-        <main className="flex-1 p-6">
-          <div className="max-w-6xl mx-auto">
+      <main className="max-w-7xl mx-auto p-6">
             <h1 className="text-3xl font-bold text-dark-charcoal mb-2">
               My Trusted Bystanders Network
             </h1>
@@ -58,7 +53,7 @@ const Bystanders = () => {
                   <UserPlus size={20} className="mr-2" />
                   Add First Bystander
                 </Button>
-                <div className="mt-8 p-4 bg-pale-pink rounded-lg">
+                <div className="mt-8 p-4 bg-sky-blue bg-opacity-20 rounded-lg">
                   <h3 className="font-bold text-dark-charcoal mb-2">Before adding bystanders:</h3>
                   <ul className="text-sm text-warm-gray text-left space-y-2">
                     <li>✓ I personally know this person</li>
@@ -91,9 +86,7 @@ const Bystanders = () => {
                 </div>
               </Card>
             </div>
-          </div>
-        </main>
-      </div>
+      </main>
 
       <FloatingActionButton />
     </div>

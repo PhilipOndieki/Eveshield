@@ -283,31 +283,16 @@ const Emergency = () => {
                 <h3 className="font-bold text-dark-charcoal">Your Location</h3>
               </div>
               {location ? (
-                <div className="bg-light-gray p-4 rounded-lg">
-                  {loadingAddress ? (
-                    <p className="text-sm text-warm-gray">📍 Getting your location...</p>
-                  ) : address ? (
-                    <>
-                      <p className="text-sm font-medium text-dark-charcoal mb-2">
-                        📍 {address}
-                      </p>
-                      <p className="text-xs text-warm-gray">
-                        Accuracy: ±{Math.round(location.accuracy)}m
-                      </p>
-                      <details className="mt-2">
-                        <summary className="text-xs text-warm-gray cursor-pointer hover:text-dark-charcoal">
-                          Show coordinates
-                        </summary>
-                        <p className="text-xs text-warm-gray mt-1 font-mono">
-                          {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
-                        </p>
-                      </details>
-                    </>
-                  ) : (
-                    <p className="text-sm text-dark-charcoal">
-                      📍 Coordinates: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
-                    </p>
-                  )}
+                <div className="bg-white p-4 rounded-lg">
+                  <p className="text-sm text-dark-charcoal">
+                    Latitude: {location.lat.toFixed(6)}
+                  </p>
+                  <p className="text-sm text-dark-charcoal">
+                    Longitude: {location.lng.toFixed(6)}
+                  </p>
+                  <p className="text-sm text-warm-gray mt-1">
+                    Accuracy: ±{Math.round(location.accuracy)}m
+                  </p>
                 </div>
               ) : (
                 <div className="bg-warning-orange bg-opacity-10 border border-warning-orange p-4 rounded-lg">
@@ -348,7 +333,7 @@ const Emergency = () => {
               <textarea
                 value={additionalInfo}
                 onChange={(e) => setAdditionalInfo(e.target.value)}
-                className="w-full px-4 py-3 border border-light-gray rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-blue"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose"
                 rows="3"
                 placeholder="Describe what's happening or any important details..."
               ></textarea>

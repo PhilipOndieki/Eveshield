@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Search, Phone, Home, Shield, Cross, AlertCircle, Scale, Heart, Users, MapPin } from 'lucide-react'
 import Navbar from '../components/common/Navbar'
-import Sidebar from '../components/common/Sidebar'
 import FloatingActionButton from '../components/common/FloatingActionButton'
 import Card from '../components/common/Card'
 import Button from '../components/common/Button'
@@ -92,14 +91,10 @@ const ResourceHub = () => {
   })
 
   return (
-    <div className="min-h-screen bg-light-gray">
+    <div className="min-h-screen bg-pale-blue">
       <Navbar isAuthenticated={true} />
 
-      <div className="flex">
-        <Sidebar />
-
-        <main className="flex-1 p-6">
-          <div className="max-w-6xl mx-auto">
+      <main className="max-w-7xl mx-auto p-6">
             <h1 className="text-3xl font-bold text-dark-charcoal mb-2">
               Support Resources
             </h1>
@@ -116,7 +111,7 @@ const ResourceHub = () => {
                   placeholder="Search by service name, type, or location..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-light-gray rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-blue"
                 />
               </div>
             </Card>
@@ -132,8 +127,8 @@ const ResourceHub = () => {
                       onClick={() => setActiveCategory(category.id)}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
                         activeCategory === category.id
-                          ? 'bg-deep-rose text-white'
-                          : 'bg-white text-warm-gray hover:bg-pale-pink'
+                          ? 'bg-medium-blue text-white'
+                          : 'bg-white text-warm-gray hover:bg-sky-blue hover:bg-opacity-20'
                       }`}
                     >
                       <Icon size={18} />
@@ -165,7 +160,7 @@ const ResourceHub = () => {
                             </span>
                           )}
                         </div>
-                        <span className="text-sm bg-pale-pink text-deep-rose px-3 py-1 rounded-full">
+                        <span className="text-sm bg-sky-blue bg-opacity-20 text-medium-blue px-3 py-1 rounded-full">
                           {resource.type}
                         </span>
                       </div>
@@ -211,7 +206,7 @@ const ResourceHub = () => {
                       <div className="flex items-center gap-2 mb-4">
                         <span className="text-sm text-warm-gray">Languages:</span>
                         {resource.languages.map((lang) => (
-                          <span key={lang} className="text-xs bg-light-gray px-2 py-1 rounded-full">
+                          <span key={lang} className="text-xs bg-white px-2 py-1 rounded-full">
                             {lang}
                           </span>
                         ))}
@@ -235,9 +230,7 @@ const ResourceHub = () => {
                 ))}
               </div>
             )}
-          </div>
-        </main>
-      </div>
+      </main>
 
       <FloatingActionButton />
     </div>
