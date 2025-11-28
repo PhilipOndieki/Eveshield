@@ -1,0 +1,336 @@
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Eye, EyeOff } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import Button from '../components/common/Button'
+import Card from '../components/common/Card'
+import { validateEmail, validatePassword, validatePhoneNumber, getPasswordStrength, formatPhoneNumber } from '../utils/validation'
+
+const SignUp = () => {
+  const navigate = useNavigate()
+  const { signup } = useAuth()
+
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    phoneNumber: '',
+    password: '',
+    confirmPassword: '',
+    agreeToTerms: false,
+  })
+
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [errors, setErrors] = useState({})
+  const [loading, setLoading] = useState(false)
+  const [generalError, setGeneralError] = useState('')
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target
+    setFormData({
+      ...formData,
+      [name]: type === 'checkbox' ? checked : value,
+    })
+    // Clear error for this field
+    setErrors({ ...errors, [name]: '' })
+    setGeneralError('')
+  }
+
+  const validateForm = () => {
+    const newErrors = {}
+
+    if (!formData.fullName.trim()) {
+      newErrors.fullName = 'Full name is required'
+    } else if (formData.fullName.trim().length < 2) {
+      newErrors.fullName = 'Name must be at least 2 characters'
+    }
+
+    if (!formData.email) {
+      newErrors.email = 'Email is required'
+    } else if (!validateEmail(formData.email)) {
+      newErrors.email = 'Please enter a valid email address'
+    }
+
+    if (!formData.phoneNumber) {
+      newErrors.phoneNumber = 'Phone number is required'
+    } else if (!validatePhoneNumber(formData.phoneNumber)) {
+      newErrors.phoneNumber = 'Please enter a valid Kenyan phone number'
+    }
+
+    if (!formData.password) {
+      newErrors.password = 'Password is required'
+    } else if (!validatePassword(formData.password)) {
+      newErrors.password = 'Password must be at least 8 characters'
+    }
+
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password'
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match'
+    }
+
+    if (!formData.agreeToTerms) {
+      newErrors.agreeToTerms = 'You must agree to the terms and conditions'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+
+    if (!validateForm()) return
+
+    setLoading(true)
+    setGeneralError('')
+
+    try {
+      await signup(formData.email, formData.password, {
+        fullName: formData.fullName,
+        phoneNumber: formatPhoneNumber(formData.phoneNumber),
+      })
+      navigate('/dashboard')
+    } catch (error) {
+      console.error('Signup error:', error)
+      if (error.code === 'auth/email-already-in-use') {
+        setGeneralError('An account with this email already exists')
+      } else if (error.code === 'auth/weak-password') {
+        setGeneralError('Password is too weak. Please use a stronger password.')
+      } else {
+        setGeneralError('Failed to create account. Please try again.')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const passwordStrength = formData.password ? getPasswordStrength(formData.password) : null
+
+  return (
+    <div className="min-h-screen bg-pale-pink flex flex-col">
+      {/* Simple Header */}
+      <div className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <Link to="/" className="text-2xl font-bold text-deep-rose">
+            EveShield
+          </Link>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex items-center justify-center px-4 py-12">
+        <div className="max-w-md w-full">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-dark-charcoal mb-2">
+              Create Your Safety Account
+            </h1>
+            <p className="text-warm-gray">
+              Join EveShield and build your safety network
+            </p>
+          </div>
+
+          <Card>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* General Error */}
+              {generalError && (
+                <div className="bg-error-red bg-opacity-10 border border-error-red text-error-red px-4 py-3 rounded-lg">
+                  {generalError}
+                </div>
+              )}
+
+              {/* Full Name */}
+              <div>
+                <label htmlFor="fullName" className="block text-sm font-medium text-dark-charcoal mb-2">
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  id="fullName"
+                  name="fullName"
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose ${
+                    errors.fullName ? 'border-error-red' : 'border-light-gray'
+                  }`}
+                  placeholder="Jane Doe"
+                />
+                {errors.fullName && (
+                  <p className="text-error-red text-sm mt-1">{errors.fullName}</p>
+                )}
+              </div>
+
+              {/* Email */}
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-dark-charcoal mb-2">
+                  Email Address *
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose ${
+                    errors.email ? 'border-error-red' : 'border-light-gray'
+                  }`}
+                  placeholder="jane@example.com"
+                />
+                {errors.email && (
+                  <p className="text-error-red text-sm mt-1">{errors.email}</p>
+                )}
+              </div>
+
+              {/* Phone Number */}
+              <div>
+                <label htmlFor="phoneNumber" className="block text-sm font-medium text-dark-charcoal mb-2">
+                  Phone Number *
+                </label>
+                <input
+                  type="tel"
+                  id="phoneNumber"
+                  name="phoneNumber"
+                  value={formData.phoneNumber}
+                  onChange={handleChange}
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose ${
+                    errors.phoneNumber ? 'border-error-red' : 'border-light-gray'
+                  }`}
+                  placeholder="+254712345678 or 0712345678"
+                />
+                {errors.phoneNumber && (
+                  <p className="text-error-red text-sm mt-1">{errors.phoneNumber}</p>
+                )}
+              </div>
+
+              {/* Password */}
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-dark-charcoal mb-2">
+                  Password *
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    id="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose ${
+                      errors.password ? 'border-error-red' : 'border-light-gray'
+                    }`}
+                    placeholder="Minimum 8 characters"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-warm-gray hover:text-dark-charcoal"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+                {formData.password && passwordStrength && (
+                  <div className="mt-2">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 bg-light-gray rounded-full overflow-hidden">
+                        <div
+                          className={`h-full bg-${passwordStrength.color} transition-all duration-300`}
+                          style={{
+                            width: passwordStrength.level === 'weak' ? '33%' : passwordStrength.level === 'medium' ? '66%' : '100%'
+                          }}
+                        ></div>
+                      </div>
+                      <span className={`text-sm text-${passwordStrength.color} capitalize`}>
+                        {passwordStrength.level}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {errors.password && (
+                  <p className="text-error-red text-sm mt-1">{errors.password}</p>
+                )}
+              </div>
+
+              {/* Confirm Password */}
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-dark-charcoal mb-2">
+                  Confirm Password *
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose ${
+                      errors.confirmPassword ? 'border-error-red' : 'border-light-gray'
+                    }`}
+                    placeholder="Re-enter your password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-warm-gray hover:text-dark-charcoal"
+                  >
+                    {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+                {errors.confirmPassword && (
+                  <p className="text-error-red text-sm mt-1">{errors.confirmPassword}</p>
+                )}
+              </div>
+
+              {/* Terms and Conditions */}
+              <div>
+                <label className="flex items-start">
+                  <input
+                    type="checkbox"
+                    name="agreeToTerms"
+                    checked={formData.agreeToTerms}
+                    onChange={handleChange}
+                    className="h-4 w-4 text-deep-rose focus:ring-deep-rose border-gray-300 rounded mt-1"
+                  />
+                  <span className="ml-2 text-sm text-warm-gray">
+                    I agree to the{' '}
+                    <button type="button" className="text-deep-rose hover:underline">
+                      Terms & Conditions
+                    </button>{' '}
+                    and{' '}
+                    <button type="button" className="text-deep-rose hover:underline">
+                      Privacy Policy
+                    </button>
+                  </span>
+                </label>
+                {errors.agreeToTerms && (
+                  <p className="text-error-red text-sm mt-1">{errors.agreeToTerms}</p>
+                )}
+              </div>
+
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                variant="primary"
+                size="medium"
+                fullWidth
+                disabled={loading}
+              >
+                {loading ? 'Creating Account...' : 'Create My Safety Account'}
+              </Button>
+
+              {/* Sign In Link */}
+              <div className="text-center pt-4">
+                <p className="text-warm-gray">
+                  Already have an account?{' '}
+                  <Link to="/login" className="text-deep-rose font-medium hover:underline">
+                    Sign in
+                  </Link>
+                </p>
+              </div>
+            </form>
+          </Card>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default SignUp
