@@ -1,10 +1,37 @@
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import { useState } from 'react'
 import Navbar from '../components/common/Navbar'
 import Button from '../components/common/Button'
 import { Shield, Users, AlertTriangle, BookOpen } from 'lucide-react'
 
 const LandingPage = () => {
   const navigate = useNavigate()
+  const { signInWithGoogle } = useAuth()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleBuildSafetyCircle = async () => {
+    setLoading(true)
+    setError('')
+
+    try {
+      await signInWithGoogle()
+      navigate('/dashboard')
+    } catch (error) {
+      console.error('Google sign-in error:', error)
+      if (error.code === 'auth/popup-closed-by-user') {
+        setError('Sign-in cancelled')
+      } else if (error.code === 'auth/popup-blocked') {
+        setError('Popup blocked. Please allow popups.')
+      } else {
+        // If Google sign-in fails, redirect to signup page
+        navigate('/signup')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen">
@@ -32,14 +59,27 @@ const LandingPage = () => {
             <p className="text-xl md:text-2xl text-white mb-12 drop-shadow-md max-w-2xl mx-auto">
               Community-powered emergency response platform for GBV prevention and survivor support
             </p>
+            
+            {/* Error message if Google sign-in fails */}
+            {error && (
+              <div className="bg-error-red bg-opacity-90 text-white px-6 py-3 rounded-lg mb-4 max-w-md mx-auto">
+                {error}
+              </div>
+            )}
+
             <Button
               variant="primary"
               size="large"
-              onClick={() => navigate('/signup')}
+              onClick={handleBuildSafetyCircle}
+              disabled={loading}
               className="hover:scale-105"
             >
-              Build Your Safety Circle
+              {loading ? 'Loading...' : 'Build Your Safety Circle'}
             </Button>
+            
+            <p className="text-white text-sm mt-4 opacity-90">
+              Sign in with Google to get started
+            </p>
           </div>
 
           {/* Scroll Indicator */}
@@ -128,9 +168,10 @@ const LandingPage = () => {
             <Button
               variant="outline"
               size="large"
-              onClick={() => navigate('/signup')}
+              onClick={handleBuildSafetyCircle}
+              disabled={loading}
             >
-              Get Started Free
+              {loading ? 'Loading...' : 'Get Started Free'}
             </Button>
             <Button
               variant="outline"
