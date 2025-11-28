@@ -4,7 +4,7 @@ import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Button from '../components/common/Button'
 import Card from '../components/common/Card'
-import { validateEmail, validatePassword, validatePhoneNumber, getPasswordStrength, formatPhoneNumber } from '../utils/validation'
+import { validateEmail, validatePassword, validatePhoneNumber, getPasswordStrength, formatPhoneNumber, countryCodes } from '../utils/validation'
 
 const SignUp = () => {
   const navigate = useNavigate()
@@ -19,6 +19,7 @@ const SignUp = () => {
     agreeToTerms: false,
   })
 
+  const [selectedCountryCode, setSelectedCountryCode] = useState('254')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [errors, setErrors] = useState({})
@@ -32,7 +33,6 @@ const SignUp = () => {
       ...formData,
       [name]: type === 'checkbox' ? checked : value,
     })
-    // Clear error for this field
     setErrors({ ...errors, [name]: '' })
     setGeneralError('')
   }
@@ -54,8 +54,11 @@ const SignUp = () => {
 
     if (!formData.phoneNumber) {
       newErrors.phoneNumber = 'Phone number is required'
-    } else if (!validatePhoneNumber(formData.phoneNumber)) {
-      newErrors.phoneNumber = 'Please enter a valid Kenyan phone number'
+    } else {
+      const fullPhone = `+${selectedCountryCode}${formData.phoneNumber}`
+      if (!validatePhoneNumber(fullPhone)) {
+        newErrors.phoneNumber = 'Please enter a valid phone number'
+      }
     }
 
     if (!formData.password) {
@@ -87,9 +90,11 @@ const SignUp = () => {
     setGeneralError('')
 
     try {
+      const fullPhone = `+${selectedCountryCode}${formData.phoneNumber}`
+      
       await signup(formData.email, formData.password, {
         fullName: formData.fullName,
-        phoneNumber: formatPhoneNumber(formData.phoneNumber),
+        phoneNumber: formatPhoneNumber(fullPhone),
       })
       navigate('/dashboard')
     } catch (error) {
@@ -244,22 +249,35 @@ const SignUp = () => {
                 )}
               </div>
 
-              {/* Phone Number */}
+              {/* Phone Number with Country Code */}
               <div>
                 <label htmlFor="phoneNumber" className="block text-sm font-medium text-dark-charcoal mb-2">
                   Phone Number *
                 </label>
-                <input
-                  type="tel"
-                  id="phoneNumber"
-                  name="phoneNumber"
-                  value={formData.phoneNumber}
-                  onChange={handleChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose ${
-                    errors.phoneNumber ? 'border-error-red' : 'border-light-gray'
-                  }`}
-                  placeholder="+254712345678 or 0712345678"
-                />
+                <div className="flex gap-2">
+                  <select
+                    value={selectedCountryCode}
+                    onChange={(e) => setSelectedCountryCode(e.target.value)}
+                    className="px-3 py-3 border border-light-gray rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose"
+                  >
+                    {countryCodes.map((country) => (
+                      <option key={country.code} value={country.code}>
+                        {country.flag} +{country.code}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="tel"
+                    id="phoneNumber"
+                    name="phoneNumber"
+                    value={formData.phoneNumber}
+                    onChange={handleChange}
+                    className={`flex-1 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose ${
+                      errors.phoneNumber ? 'border-error-red' : 'border-light-gray'
+                    }`}
+                    placeholder="712345678"
+                  />
+                </div>
                 {errors.phoneNumber && (
                   <p className="text-error-red text-sm mt-1">{errors.phoneNumber}</p>
                 )}
@@ -295,13 +313,21 @@ const SignUp = () => {
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-2 bg-light-gray rounded-full overflow-hidden">
                         <div
-                          className={`h-full bg-${passwordStrength.color} transition-all duration-300`}
+                          className={`h-full transition-all duration-300 ${
+                            passwordStrength.level === 'weak' ? 'bg-error-red' :
+                            passwordStrength.level === 'medium' ? 'bg-warning-orange' :
+                            'bg-success-green'
+                          }`}
                           style={{
                             width: passwordStrength.level === 'weak' ? '33%' : passwordStrength.level === 'medium' ? '66%' : '100%'
                           }}
                         ></div>
                       </div>
-                      <span className={`text-sm text-${passwordStrength.color} capitalize`}>
+                      <span className={`text-sm capitalize ${
+                        passwordStrength.level === 'weak' ? 'text-error-red' :
+                        passwordStrength.level === 'medium' ? 'text-warning-orange' :
+                        'text-success-green'
+                      }`}>
                         {passwordStrength.level}
                       </span>
                     </div>

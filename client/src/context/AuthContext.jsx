@@ -56,17 +56,18 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // Sign in with Google
+  // Sign in with Google (using popup)
   const signInWithGoogle = async () => {
     try {
       setError(null)
       const provider = new GoogleAuthProvider()
       
-      // Optional: Add custom parameters
+      // Add custom parameters
       provider.setCustomParameters({
         prompt: 'select_account'
       })
 
+      // Use popup with proper error handling
       const result = await signInWithPopup(auth, provider)
       const user = result.user
 
@@ -96,6 +97,7 @@ export const AuthProvider = ({ children }) => {
       return user
     } catch (err) {
       setError(err.message)
+      // Re-throw the error so the calling component can handle it
       throw err
     }
   }
