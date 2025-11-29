@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { collection, getDocs, addDoc, updateDoc, doc, query, where, serverTimestamp, deleteDoc } from 'firebase/firestore'
+import { collection, getDocs, addDoc, updateDoc, doc, query, where, serverTimestamp, deleteDoc, onSnapshot } from 'firebase/firestore'
 import { db } from '../utils/firebase'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
@@ -27,11 +27,99 @@ const BystandersEnhanced = () => {
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [requestMessage, setRequestMessage] = useState('')
 
+  // ✅ FIX 1: Use real-time listeners instead of one-time fetch
   useEffect(() => {
-    fetchAllData()
-  }, [])
+    if (!currentUser) return
 
-  const fetchAllData = async () => {
+    const unsubscribers = []
+
+    // Real-time listener for received requests
+    const receivedQuery = query(
+      collection(db, 'connections'),
+      where('toUserId', '==', currentUser.uid),
+      where('status', '==', 'pending')
+    )
+    
+    const unsubReceived = onSnapshot(
+      receivedQuery,
+      (snapshot) => {
+        const receivedData = snapshot.docs.map(doc => ({ 
+          id: doc.id, 
+          ...doc.data() 
+        }))
+        console.log('📨 Received requests updated:', receivedData)
+        setReceivedRequests(receivedData)
+      },
+      (error) => {
+        console.error('Error listening to received requests:', error)
+        toast.error('Failed to load received requests')
+      }
+    )
+    unsubscribers.push(unsubReceived)
+
+    // Real-time listener for sent requests
+    const sentQuery = query(
+      collection(db, 'connections'),
+      where('fromUserId', '==', currentUser.uid),
+      where('status', '==', 'pending')
+    )
+    
+    const unsubSent = onSnapshot(
+      sentQuery,
+      (snapshot) => {
+        const sentData = snapshot.docs.map(doc => ({ 
+          id: doc.id, 
+          ...doc.data() 
+        }))
+        console.log('📤 Sent requests updated:', sentData)
+        setSentRequests(sentData)
+      },
+      (error) => {
+        console.error('Error listening to sent requests:', error)
+      }
+    )
+    unsubscribers.push(unsubSent)
+
+    // Real-time listener for my bystanders
+    const bystandersQuery = query(
+      collection(db, 'connections'),
+      where('fromUserId', '==', currentUser.uid),
+      where('status', '==', 'accepted')
+    )
+
+    const unsubBystanders = onSnapshot(
+      bystandersQuery,
+      (snapshot) => {
+        const bystandersData = snapshot.docs.map(doc => ({ 
+          id: doc.id, 
+          ...doc.data() 
+        }))
+        
+        // Remove duplicates based on toUserId
+        const uniqueBystanders = bystandersData.filter((connection, index, self) => 
+          index === self.findIndex(c => c.toUserId === connection.toUserId)
+        )
+        
+        console.log('👥 Bystanders updated:', uniqueBystanders)
+        setMyBystanders(uniqueBystanders)
+      },
+
+      (error) => {
+        console.error('Error listening to bystanders:', error)
+      }
+    )
+    unsubscribers.push(unsubBystanders)
+
+    // Initial load of users
+    fetchAllUsers()
+
+    // Cleanup listeners on unmount
+    return () => {
+      unsubscribers.forEach(unsub => unsub())
+    }
+  }, [currentUser])
+
+  const fetchAllUsers = async () => {
     setLoading(true)
     try {
       // Fetch all users except current user
@@ -39,53 +127,18 @@ const BystandersEnhanced = () => {
       const usersData = usersSnapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(user => user.id !== currentUser.uid)
-      setAllUsers(usersData)
-
-      // Fetch my bystanders (accepted connections)
-      const bystandersQuery = query(
-        collection(db, 'connections'),
-        where('fromUserId', '==', currentUser.uid),
-        where('status', '==', 'accepted')
-      )
-      const bystandersSnapshot = await getDocs(bystandersQuery)
-      const bystandersData = bystandersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-      setMyBystanders(bystandersData)
-
-      // Fetch sent requests
-      const sentQuery = query(
-        collection(db, 'connections'),
-        where('fromUserId', '==', currentUser.uid),
-        where('status', '==', 'pending')
-      )
-      const sentSnapshot = await getDocs(sentQuery)
-      const sentData = sentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-      setSentRequests(sentData)
-
-      // Fetch received requests
-      const receivedQuery = query(
-        collection(db, 'connections'),
-        where('toUserId', '==', currentUser.uid),
-        where('status', '==', 'pending')
-      )
-      const receivedSnapshot = await getDocs(receivedQuery)
-      const receivedData = receivedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-      setReceivedRequests(receivedData)
-    } catch (error) {
-      console.error('Error fetching data:', error)
-      console.error('Error code:', error.code)
-      console.error('Error message:', error.message)
       
-      if (error.code === 'permission-denied') {
-        toast.error('Permission denied. Please check your Firestore security rules.')
-      } else if (error.code === 'failed-precondition') {
-        toast.error('Database indexes missing. Please create required indexes.')
-      } else {
-        toast.error('Failed to load data. Please refresh the page.')
-      }
+      console.log('👤 All users loaded:', usersData.length)
+      setAllUsers(usersData)
+    } catch (error) {
+      console.error('Error fetching users:', error)
+      toast.error('Failed to load users')
     } finally {
       setLoading(false)
     }
   }
+
+  // ✅ REMOVED: fetchAllData - replaced with real-time listeners
 
   const handleSendRequest = async (user) => {
     setSelectedUser(user)
@@ -94,16 +147,28 @@ const BystandersEnhanced = () => {
 
   const confirmSendRequest = async () => {
     try {
-      // Create the connection request
-      const connectionRef = await addDoc(collection(db, 'connections'), {
+      console.log('📤 Sending request to:', selectedUser)
+      console.log('👤 Current user:', currentUser.uid)
+      console.log('📝 User profile:', userProfile)
+
+      // ✅ FIX 2: Validate user profile exists
+      if (!userProfile || !userProfile.fullName) {
+        toast.error('Please complete your profile before sending requests')
+        return
+      }
+
+      // ✅ FIX 3: Add user ID to the user data being stored
+      const connectionData = {
         fromUserId: currentUser.uid,
         fromUserProfile: {
-          fullName: userProfile?.fullName,
+          id: currentUser.uid, // Store the ID
+          fullName: userProfile.fullName,
           email: currentUser.email,
-          photoURL: userProfile?.photoURL || null,
+          photoURL: userProfile.photoURL || null,
         },
         toUserId: selectedUser.id,
         toUserProfile: {
+          id: selectedUser.id, // Store the ID
           fullName: selectedUser.fullName,
           email: selectedUser.email,
           photoURL: selectedUser.photoURL || null,
@@ -111,20 +176,27 @@ const BystandersEnhanced = () => {
         status: 'pending',
         message: requestMessage,
         createdAt: serverTimestamp(),
-      })
+      }
+
+      console.log('📦 Connection data:', connectionData)
+
+      // Create the connection request
+      const connectionRef = await addDoc(collection(db, 'connections'), connectionData)
+
+      console.log('✅ Connection created:', connectionRef.id)
 
       // Create notification for the recipient
       await addDoc(collection(db, 'notifications'), {
         userId: selectedUser.id,
         type: 'connection',
         title: 'New Connection Request',
-        message: `${userProfile?.fullName || 'Someone'} wants to connect with you as a trusted bystander${requestMessage ? `: "${requestMessage}"` : '.'}`,
+        message: `${userProfile.fullName} wants to connect with you as a trusted bystander${requestMessage ? `: "${requestMessage}"` : '.'}`,
         read: false,
         actionUrl: '/bystanders',
         metadata: {
           connectionId: connectionRef.id,
           fromUserId: currentUser.uid,
-          fromUserName: userProfile?.fullName || 'User',
+          fromUserName: userProfile.fullName,
         },
         createdAt: serverTimestamp(),
       })
@@ -132,10 +204,11 @@ const BystandersEnhanced = () => {
       toast.success(`Request sent to ${selectedUser.fullName}`)
       setShowRequestModal(false)
       setRequestMessage('')
-      fetchAllData()
+      // ✅ No need to call fetchAllData - real-time listener handles it
     } catch (error) {
-      console.error('Error sending request:', error)
+      console.error('❌ Error sending request:', error)
       console.error('Error code:', error.code)
+      console.error('Error message:', error.message)
       
       if (error.code === 'permission-denied') {
         toast.error('Permission denied. Check your Firestore security rules.')
@@ -149,6 +222,8 @@ const BystandersEnhanced = () => {
 
   const handleAcceptRequest = async (request) => {
     try {
+      console.log('✅ Accepting request:', request)
+
       // Update original request to accepted
       await updateDoc(doc(db, 'connections', request.id), {
         status: 'accepted',
@@ -183,10 +258,11 @@ const BystandersEnhanced = () => {
       })
 
       toast.success(`You are now connected with ${request.fromUserProfile.fullName}`)
-      fetchAllData()
+      // ✅ No need to call fetchAllData - real-time listener handles it
     } catch (error) {
-      console.error('Error accepting request:', error)
-      toast.error('Failed to accept request')
+      console.error('❌ Error accepting request:', error)
+      console.error('Error code:', error.code)
+      toast.error('Failed to accept request: ' + error.message)
     }
   }
 
@@ -194,7 +270,7 @@ const BystandersEnhanced = () => {
     try {
       await deleteDoc(doc(db, 'connections', request.id))
       toast.success('Request declined')
-      fetchAllData()
+      // ✅ No need to call fetchAllData - real-time listener handles it
     } catch (error) {
       console.error('Error declining request:', error)
       toast.error('Failed to decline request')
@@ -205,22 +281,19 @@ const BystandersEnhanced = () => {
     try {
       await deleteDoc(doc(db, 'connections', request.id))
       toast.success('Request cancelled')
-      fetchAllData()
+      // ✅ No need to call fetchAllData - real-time listener handles it
     } catch (error) {
       console.error('Error cancelling request:', error)
       toast.error('Failed to cancel request')
     }
   }
 
-  // ✅ NEW: Handle View Profile
   const handleViewProfile = (user) => {
     setSelectedUser(user)
     setShowProfileModal(true)
   }
 
-  // ✅ NEW: Handle Message - Navigate to Chat
   const handleMessage = (user) => {
-    // Navigate to chat page with the user
     navigate('/chat', { state: { selectedUser: user } })
   }
 
@@ -237,6 +310,14 @@ const BystandersEnhanced = () => {
                          user.email?.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesSearch
   })
+
+  // ✅ FIX 4: Add debugging info
+  useEffect(() => {
+    console.log('🔍 Current User ID:', currentUser?.uid)
+    console.log('📊 Received Requests Count:', receivedRequests.length)
+    console.log('📊 Sent Requests Count:', sentRequests.length)
+    console.log('📊 Bystanders Count:', myBystanders.length)
+  }, [currentUser, receivedRequests, sentRequests, myBystanders])
 
   return (
     <div className="min-h-screen bg-pale-blue">
@@ -572,7 +653,7 @@ const BystandersEnhanced = () => {
         </div>
       )}
 
-      {/* View Profile Modal - ✅ NEW */}
+      {/* View Profile Modal */}
       {showProfileModal && selectedUser && (
         <Modal
           isOpen={showProfileModal}

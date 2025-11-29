@@ -52,11 +52,20 @@ service cloud.firestore {
                     (resource.data.fromUserId == request.auth.uid ||
                      resource.data.toUserId == request.auth.uid);
 
-      // Allow create if you're the sender
+      // Allow create if:
+      // 1. You're creating a pending request for yourself, OR
+      // 2. You're creating an accepted reverse connection (when accepting a request)
       allow create: if isSignedIn() &&
                       request.resource.data.fromUserId == request.auth.uid &&
-                      request.resource.data.keys().hasAll(['fromUserId', 'toUserId', 'status', 'createdAt']) &&
-                      request.resource.data.status == 'pending';
+                      request.resource.data.keys().hasAll(['fromUserId', 'toUserId', 'status']) &&
+                      (
+                        // Creating a pending request
+                        (request.resource.data.status == 'pending' &&
+                         request.resource.data.keys().hasAll(['createdAt'])) ||
+                        // Creating an accepted reverse connection
+                        (request.resource.data.status == 'accepted' &&
+                         request.resource.data.keys().hasAll(['acceptedAt', 'originalRequestId']))
+                      );
 
       // Allow update if you're the receiver (accepting/declining) or sender (cancelling)
       allow update: if isSignedIn() &&
