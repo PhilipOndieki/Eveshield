@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Menu, X, Bell, User, LogOut, MessageCircle, Shield, LayoutDashboard, Users, ClipboardList, BookOpen, DollarSign } from 'lucide-react'
+import { Menu, X, Bell, User, LogOut, Shield, DollarSign } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import Button from './Button'
@@ -22,13 +22,13 @@ const Navbar = ({ isAuthenticated = false, transparent = false }) => {
     }
   }
 
-  // Navigation menu items for authenticated users
+  // Navigation menu items for authenticated users - SIMPLIFIED
   const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/contacts', label: 'My Contacts', icon: Users },
-    { path: '/bystanders', label: 'Trusted Bystanders', icon: Shield },
-    { path: '/incidents', label: 'Incidents', icon: ClipboardList },
-    { path: '/resource-hub', label: 'Resources Hub', icon: BookOpen },
+    { path: '/dashboard', label: 'Dashboard' },
+    { path: '/contacts', label: 'Contacts' },
+    { path: '/bystanders', label: 'Bystanders' },
+    { path: '/incidents', label: 'Incidents' },
+    { path: '/resource-hub', label: 'Resources' },
   ]
 
   const isActivePath = (path) => location.pathname === path
@@ -66,39 +66,36 @@ const Navbar = ({ isAuthenticated = false, transparent = false }) => {
             </div>
           ) : (
             <div className="hidden lg:flex items-center gap-1">
-              {/* Navigation Links */}
+              {/* Navigation Links - Clean, no icons */}
               {navItems.map((item) => {
-                const Icon = item.icon
                 const isActive = isActivePath(item.path)
                 return (
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
+                    className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
                       isActive
                         ? 'bg-sky-blue bg-opacity-20 text-white'
                         : 'text-gray-300 hover:text-white hover:bg-white hover:bg-opacity-10'
                     }`}
                   >
-                    <Icon size={18} />
-                    <span>{item.label}</span>
+                    {item.label}
                   </Link>
                 )
               })}
 
-              {/* Donate Button */}
+              {/* Donate Button - Simplified */}
               <button
                 onClick={() => setShowDonationModal(true)}
-                className="flex items-center gap-2 px-3 py-2 ml-2 border border-white text-white rounded-lg text-sm font-medium hover:bg-white hover:text-deep-navy transition-colors"
+                className="px-4 py-2 ml-2 border border-white text-white rounded-lg text-sm font-medium hover:bg-white hover:text-deep-navy transition-colors"
               >
-                <DollarSign size={18} />
-                <span>Donate</span>
+                Donate
               </button>
 
               {/* Divider */}
               <div className="h-8 w-px bg-white bg-opacity-20 mx-2"></div>
 
-              {/* Notifications */}
+              {/* Notifications - Icon only */}
               <button
                 onClick={() => navigate('/notifications')}
                 className="relative p-2 hover:bg-white hover:bg-opacity-10 rounded-full transition-colors"
@@ -109,18 +106,7 @@ const Navbar = ({ isAuthenticated = false, transparent = false }) => {
                 </span>
               </button>
 
-              {/* Chat Icon (placeholder for future implementation) */}
-              <button
-                onClick={() => navigate('/chat')}
-                className="relative p-2 hover:bg-white hover:bg-opacity-10 rounded-full transition-colors"
-              >
-                <MessageCircle size={20} className="text-white" />
-                <span className="absolute top-0 right-0 bg-deep-rose text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                  2
-                </span>
-              </button>
-
-              {/* Profile Dropdown */}
+              {/* Profile Dropdown - Simplified */}
               <div className="relative ml-2">
                 <button
                   onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
@@ -185,21 +171,19 @@ const Navbar = ({ isAuthenticated = false, transparent = false }) => {
               <div className="flex flex-col gap-2">
                 {/* Mobile Navigation Links */}
                 {navItems.map((item) => {
-                  const Icon = item.icon
                   const isActive = isActivePath(item.path)
                   return (
                     <Link
                       key={item.path}
                       to={item.path}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                      className={`px-4 py-3 rounded-lg transition-colors ${
                         isActive
                           ? 'bg-sky-blue bg-opacity-20 text-white font-medium'
                           : 'text-gray-300 hover:text-white hover:bg-white hover:bg-opacity-10'
                       }`}
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      <Icon size={20} />
-                      <span>{item.label}</span>
+                      {item.label}
                     </Link>
                   )
                 })}
@@ -207,31 +191,28 @@ const Navbar = ({ isAuthenticated = false, transparent = false }) => {
                 {/* Donate Button Mobile */}
                 <button
                   onClick={() => setShowDonationModal(true)}
-                  className="flex items-center gap-3 px-4 py-3 border border-white text-white rounded-lg font-medium hover:bg-white hover:text-deep-navy transition-colors"
+                  className="px-4 py-3 border border-white text-white rounded-lg font-medium hover:bg-white hover:text-deep-navy transition-colors text-left"
                 >
-                  <DollarSign size={20} />
-                  <span>Donate</span>
+                  Donate
                 </button>
 
                 <div className="border-t border-white border-opacity-20 my-2"></div>
 
                 <Link
                   to="/profile"
-                  className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors"
+                  className="px-4 py-3 text-gray-300 hover:text-white hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  <User size={20} />
-                  <span>Profile Settings</span>
+                  Profile Settings
                 </Link>
                 <button
                   onClick={() => {
                     handleLogout()
                     setMobileMenuOpen(false)
                   }}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors text-left text-deep-rose"
+                  className="px-4 py-3 hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors text-left text-deep-rose"
                 >
-                  <LogOut size={20} />
-                  <span>Logout</span>
+                  Logout
                 </button>
               </div>
             )}
