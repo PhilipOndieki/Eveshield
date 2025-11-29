@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { collection, addDoc, query, where, orderBy, onSnapshot, serverTimestamp, doc, updateDoc } from 'firebase/firestore'
+import { collection, addDoc, query, where, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, getDocs, limit } from 'firebase/firestore'
 import { db } from '../utils/firebase'
 import { useAuth } from '../context/AuthContext'
 import Navbar from '../components/common/Navbar'
@@ -28,8 +28,10 @@ const Chat = () => {
     scrollToBottom()
   }, [messages])
 
-  // Fetch conversations
+  // Fetch conversations with last message
   useEffect(() => {
+    if (!currentUser) return
+
     const fetchConversations = async () => {
       try {
         // Get all connections (bystanders)
@@ -39,14 +41,57 @@ const Chat = () => {
           where('status', '==', 'accepted')
         )
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
+        const unsubscribe = onSnapshot(q, async (snapshot) => {
           const convos = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
             partnerId: doc.data().toUserId,
             partnerProfile: doc.data().toUserProfile,
           }))
-          setConversations(convos)
+
+          // Remove duplicates based on partnerId
+          const uniqueConvos = convos.filter((convo, index, self) =>
+            index === self.findIndex(c => c.partnerId === convo.partnerId)
+          )
+
+          // Fetch last message for each conversation
+          const convosWithLastMessage = await Promise.all(
+            uniqueConvos.map(async (convo) => {
+              const chatId = [currentUser.uid, convo.partnerId].sort().join('_')
+              const messagesQuery = query(
+                collection(db, 'chats', chatId, 'messages'),
+                orderBy('timestamp', 'desc'),
+                limit(1)
+              )
+
+              try {
+                const messagesSnapshot = await getDocs(messagesQuery)
+                const lastMessage = messagesSnapshot.docs[0]?.data()
+                
+                return {
+                  ...convo,
+                  lastMessage: lastMessage?.text || 'Click to start conversation',
+                  lastMessageTime: lastMessage?.timestamp,
+                }
+              } catch (error) {
+                console.error('Error fetching last message:', error)
+                return {
+                  ...convo,
+                  lastMessage: 'Click to start conversation',
+                  lastMessageTime: null,
+                }
+              }
+            })
+          )
+
+          // Sort by most recent message
+          const sortedConvos = convosWithLastMessage.sort((a, b) => {
+            if (!a.lastMessageTime) return 1
+            if (!b.lastMessageTime) return -1
+            return b.lastMessageTime?.toDate?.() - a.lastMessageTime?.toDate?.()
+          })
+
+          setConversations(sortedConvos)
           setLoading(false)
         })
 
@@ -58,7 +103,7 @@ const Chat = () => {
     }
 
     fetchConversations()
-  }, [currentUser.uid])
+  }, [currentUser?.uid])
 
   // Fetch messages for selected chat
   useEffect(() => {
@@ -164,12 +209,18 @@ const Chat = () => {
                               <h3 className="font-medium text-dark-charcoal truncate">
                                 {convo.partnerProfile?.fullName || 'User'}
                               </h3>
-                              <span className="text-xs text-warm-gray">12:45 PM</span>
+                              <span className="text-xs text-warm-gray">
+                                {convo.lastMessageTime?.toDate
+                                  ? formatDistanceToNow(convo.lastMessageTime.toDate(), { addSuffix: true })
+                                  : ''}
+                              </span>
                             </div>
                             <p className="text-sm text-warm-gray truncate">
-                              Click to start conversation
+                              {convo.lastMessage || 'Click to start conversation'}
                             </p>
                           </div>
+
+
                         </div>
                       </button>
                     ))}
