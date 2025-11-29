@@ -2,8 +2,11 @@
 
 ![eveshield](image.png)
 
-Project URL: https://eveshield.vercel.app/
-Pitchdeck URL: https://www.canva.com/design/DAGKxOtQktM/lseQ0Le3qqmYEoYGiCKyww/edit?ui=eyJEIjp7IlAiOnsiQiI6ZmFsc2V9fX0
+## Links
+
+- **Project:** [Eveshield](https://eveshield.vercel.app/)
+- **Pitchdeck:** [Pitchdeck](https://www.canva.com/design/DAGKxOtQktM/lseQ0Le3qqmYEoYGiCKyww/edit?ui=eyJEIjp7IlAiOnsiQiI6ZmFsc2V9fX0)
+
 ## 🌟 Overview
 
 EveShield is a community-powered emergency response platform designed for gender-based violence (GBV) prevention and survivor support. Built with React and Firebase, it enables users to build personal safety networks with tiered emergency alert capabilities, trusted bystander networks, and instant access to verified support resources.
