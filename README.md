@@ -5,7 +5,7 @@
 ## Links
 
 - **Project:** [Eveshield](https://eveshield.vercel.app/)
-- **Pitchdeck:** [Pitchdeck](https://www.canva.com/design/DAGKxOtQktM/lseQ0Le3qqmYEoYGiCKyww/edit?ui=eyJEIjp7IlAiOnsiQiI6ZmFsc2V9fX0)
+- **Pitchdeck:** [Pitchdeck](https://www.canva.com/design/DAG5-fpywSg/HDTKiUaEu6hKi5KVubHR0w/edit?utm_content=DAG5-fpywSg&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)
 
 ## 🌟 Overview
 
@@ -297,7 +297,7 @@ This project is open source and available under the [MIT License](LICENSE).
 Built for Power Hacks 2025
 
 - **Developer**: Philip Ondieki
-- **Theme**: Safety by Design
+- **Theme**: Survivor 
 
 ## 🙏 Acknowledgments
 
@@ -306,8 +306,3 @@ Built for Power Hacks 2025
 - Open source community (React, Tailwind CSS, Firebase)
 - Survivors and advocates who inspired this platform
 
----
-
-**Built with 💜 for Power Hacks 2025 - Safety by Design**
-
-*Safety isn’t a privilege, it’s a button.*
