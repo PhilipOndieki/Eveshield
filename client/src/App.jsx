@@ -1,30 +1,45 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
 import { AuthProvider } from './context/AuthContext'
 
-// Pages
-import LandingPage from './pages/LandingPage'
-import Login from './pages/Login'
-import SignUp from './pages/SignUp'
-import Dashboard from './pages/Dashboard'
-import Emergency from './pages/Emergency'
-import Contacts from './pages/Contacts'
-import Bystanders from './pages/Bystanders'
-import Incidents from './pages/Incidents'
-import ResourceHub from './pages/ResourceHub'
-import Profile from './pages/Profile'
-
-// Route Protection
+// Components that should load immediately
+import AIChatbot from './components/common/AIChatbot'
 import ProtectedRoute from './routes/ProtectedRoute'
+
+// Lazy load pages for code splitting and better performance
+const LandingPage = lazy(() => import('./pages/LandingPage'))
+const Login = lazy(() => import('./pages/Login'))
+const SignUp = lazy(() => import('./pages/SignUp'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Emergency = lazy(() => import('./pages/Emergency'))
+const Contacts = lazy(() => import('./pages/Contacts'))
+const BystandersEnhanced = lazy(() => import('./pages/BystandersEnhanced'))
+const Incidents = lazy(() => import('./pages/Incidents'))
+const ResourceHub = lazy(() => import('./pages/ResourceHub'))
+const Profile = lazy(() => import('./pages/Profile'))
+const Chat = lazy(() => import('./pages/Chat'))
+const Notifications = lazy(() => import('./pages/Notifications'))
+
+// Loading fallback component
+const PageLoader = () => (
+  <div className="min-h-screen bg-pale-blue flex items-center justify-center">
+    <div className="text-center">
+      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-medium-blue mb-4"></div>
+      <p className="text-warm-gray">Loading...</p>
+    </div>
+  </div>
+)
 
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<SignUp />} />
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<SignUp />} />
 
           {/* Protected Routes */}
           <Route path="/dashboard" element={
@@ -44,7 +59,17 @@ function App() {
           } />
           <Route path="/bystanders" element={
             <ProtectedRoute>
-              <Bystanders />
+              <BystandersEnhanced />
+            </ProtectedRoute>
+          } />
+          <Route path="/chat" element={
+            <ProtectedRoute>
+              <Chat />
+            </ProtectedRoute>
+          } />
+          <Route path="/notifications" element={
+            <ProtectedRoute>
+              <Notifications />
             </ProtectedRoute>
           } />
           <Route path="/incidents" element={
@@ -62,7 +87,18 @@ function App() {
               <Profile />
             </ProtectedRoute>
           } />
-        </Routes>
+          </Routes>
+        </Suspense>
+        {/* AI Chatbot - Available on all protected routes */}
+        {window.location.pathname.startsWith('/dashboard') ||
+         window.location.pathname.startsWith('/contacts') ||
+         window.location.pathname.startsWith('/bystanders') ||
+         window.location.pathname.startsWith('/incidents') ||
+         window.location.pathname.startsWith('/resource-hub') ||
+         window.location.pathname.startsWith('/profile') ||
+         window.location.pathname.startsWith('/chat') ? (
+          <AIChatbot />
+        ) : null}
       </Router>
     </AuthProvider>
   )

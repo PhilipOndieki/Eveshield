@@ -3,10 +3,12 @@ import { Menu, X, Bell, User, LogOut, MessageCircle, Shield, LayoutDashboard, Us
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import Button from './Button'
+import DonationModal from './DonationModal'
 
 const Navbar = ({ isAuthenticated = false, transparent = false }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
+  const [showDonationModal, setShowDonationModal] = useState(false)
   const { currentUser, userProfile, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -36,6 +38,7 @@ const Navbar = ({ isAuthenticated = false, transparent = false }) => {
     : 'bg-deep-navy shadow-md text-white'
 
   return (
+    <>
     <nav className={`sticky top-0 z-50 ${navClasses}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
@@ -84,7 +87,10 @@ const Navbar = ({ isAuthenticated = false, transparent = false }) => {
               })}
 
               {/* Donate Button */}
-              <button className="flex items-center gap-2 px-3 py-2 ml-2 border border-white text-white rounded-lg text-sm font-medium hover:bg-white hover:text-deep-navy transition-colors">
+              <button
+                onClick={() => setShowDonationModal(true)}
+                className="flex items-center gap-2 px-3 py-2 ml-2 border border-white text-white rounded-lg text-sm font-medium hover:bg-white hover:text-deep-navy transition-colors"
+              >
                 <DollarSign size={18} />
                 <span>Donate</span>
               </button>
@@ -93,7 +99,10 @@ const Navbar = ({ isAuthenticated = false, transparent = false }) => {
               <div className="h-8 w-px bg-white bg-opacity-20 mx-2"></div>
 
               {/* Notifications */}
-              <button className="relative p-2 hover:bg-white hover:bg-opacity-10 rounded-full transition-colors">
+              <button
+                onClick={() => navigate('/notifications')}
+                className="relative p-2 hover:bg-white hover:bg-opacity-10 rounded-full transition-colors"
+              >
                 <Bell size={20} className="text-white" />
                 <span className="absolute top-0 right-0 bg-deep-rose text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
                   3
@@ -101,7 +110,10 @@ const Navbar = ({ isAuthenticated = false, transparent = false }) => {
               </button>
 
               {/* Chat Icon (placeholder for future implementation) */}
-              <button className="relative p-2 hover:bg-white hover:bg-opacity-10 rounded-full transition-colors">
+              <button
+                onClick={() => navigate('/chat')}
+                className="relative p-2 hover:bg-white hover:bg-opacity-10 rounded-full transition-colors"
+              >
                 <MessageCircle size={20} className="text-white" />
                 <span className="absolute top-0 right-0 bg-deep-rose text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
                   2
@@ -193,7 +205,10 @@ const Navbar = ({ isAuthenticated = false, transparent = false }) => {
                 })}
 
                 {/* Donate Button Mobile */}
-                <button className="flex items-center gap-3 px-4 py-3 border border-white text-white rounded-lg font-medium hover:bg-white hover:text-deep-navy transition-colors">
+                <button
+                  onClick={() => setShowDonationModal(true)}
+                  className="flex items-center gap-3 px-4 py-3 border border-white text-white rounded-lg font-medium hover:bg-white hover:text-deep-navy transition-colors"
+                >
                   <DollarSign size={20} />
                   <span>Donate</span>
                 </button>
@@ -224,6 +239,10 @@ const Navbar = ({ isAuthenticated = false, transparent = false }) => {
         )}
       </div>
     </nav>
+
+    {/* Donation Modal */}
+    <DonationModal isOpen={showDonationModal} onClose={() => setShowDonationModal(false)} />
+  </>
   )
 }
 
