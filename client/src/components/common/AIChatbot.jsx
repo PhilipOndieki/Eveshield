@@ -148,7 +148,7 @@ Provide a helpful, compassionate response:`
                 <Bot size={24} />
               </div>
               <div>
-                <h3 className="font-bold">SafeGuide AI</h3>
+                <h3 className="font-bold">Eveshield AI</h3>
                 <p className="text-xs opacity-90">Safety Education Assistant</p>
               </div>
             </div>
