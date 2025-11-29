@@ -9,7 +9,7 @@
 - **Production:** [https://eveshield.vercel.app/](https://eveshield.vercel.app/)
 - **Pitch Deck:** [View Presentation](https://www.canva.com/design/DAG5-fpywSg/HDTKiUaEu6hKi5KVubHR0w/edit?utm_content=DAG5-fpywSg&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)
 
-- **Live Video:** [Click to watch the video Preview of EveShield](https://youtu.be/98brZIQeaX4)
+- **Live Video:** [Click to watch the video Preview of](https://youtu.be/5l6Q64MLNjo)
 
 ---
 
