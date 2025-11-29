@@ -2,16 +2,19 @@ import { useState, useEffect } from 'react'
 import { collection, getDocs, addDoc, updateDoc, doc, query, where, serverTimestamp, deleteDoc } from 'firebase/firestore'
 import { db } from '../utils/firebase'
 import { useAuth } from '../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/common/Navbar'
 import FloatingActionButton from '../components/common/FloatingActionButton'
 import Card from '../components/common/Card'
 import Button from '../components/common/Button'
-import { Shield, UserPlus, Info, Search, MapPin, CheckCircle, Clock, X, Send, Users as UsersIcon } from 'lucide-react'
+import Modal from '../components/common/Modal'
+import { Shield, UserPlus, Info, Search, MapPin, CheckCircle, Clock, X, Send, Users as UsersIcon, Mail, Phone } from 'lucide-react'
 import { getInitials } from '../utils/helpers'
 import toast, { Toaster } from 'react-hot-toast'
 
 const BystandersEnhanced = () => {
   const { currentUser, userProfile } = useAuth()
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('discover') // discover, myBystanders, requests
   const [allUsers, setAllUsers] = useState([])
   const [myBystanders, setMyBystanders] = useState([])
@@ -21,6 +24,7 @@ const BystandersEnhanced = () => {
   const [loading, setLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState(null)
   const [showRequestModal, setShowRequestModal] = useState(false)
+  const [showProfileModal, setShowProfileModal] = useState(false)
   const [requestMessage, setRequestMessage] = useState('')
 
   useEffect(() => {
@@ -109,7 +113,7 @@ const BystandersEnhanced = () => {
         createdAt: serverTimestamp(),
       })
 
-      // ✅ CREATE NOTIFICATION FOR THE RECIPIENT
+      // Create notification for the recipient
       await addDoc(collection(db, 'notifications'), {
         userId: selectedUser.id,
         type: 'connection',
@@ -162,7 +166,7 @@ const BystandersEnhanced = () => {
         originalRequestId: request.id,
       })
 
-      // ✅ NOTIFY THE ORIGINAL SENDER
+      // Notify the original sender
       await addDoc(collection(db, 'notifications'), {
         userId: request.fromUserId,
         type: 'connection',
@@ -206,6 +210,18 @@ const BystandersEnhanced = () => {
       console.error('Error cancelling request:', error)
       toast.error('Failed to cancel request')
     }
+  }
+
+  // ✅ NEW: Handle View Profile
+  const handleViewProfile = (user) => {
+    setSelectedUser(user)
+    setShowProfileModal(true)
+  }
+
+  // ✅ NEW: Handle Message - Navigate to Chat
+  const handleMessage = (user) => {
+    // Navigate to chat page with the user
+    navigate('/chat', { state: { selectedUser: user } })
   }
 
   const isRequestSent = (userId) => {
@@ -395,10 +411,20 @@ const BystandersEnhanced = () => {
                     </div>
 
                     <div className="flex gap-2">
-                      <Button variant="secondary" size="small" fullWidth>
+                      <Button 
+                        variant="secondary" 
+                        size="small" 
+                        fullWidth
+                        onClick={() => handleViewProfile(connection.toUserProfile)}
+                      >
                         View Profile
                       </Button>
-                      <Button variant="primary" size="small" fullWidth>
+                      <Button 
+                        variant="primary" 
+                        size="small" 
+                        fullWidth
+                        onClick={() => handleMessage(connection.toUserProfile)}
+                      >
                         Message
                       </Button>
                     </div>
@@ -544,6 +570,86 @@ const BystandersEnhanced = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* View Profile Modal - ✅ NEW */}
+      {showProfileModal && selectedUser && (
+        <Modal
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+          title="User Profile"
+        >
+          <div className="space-y-6">
+            {/* Profile Header */}
+            <div className="flex items-center gap-4">
+              <div className="h-20 w-20 bg-sky-blue rounded-full flex items-center justify-center text-deep-navy text-3xl font-bold">
+                {getInitials(selectedUser.fullName || 'U')}
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-dark-charcoal">{selectedUser.fullName}</h2>
+                <p className="text-warm-gray">{selectedUser.email}</p>
+              </div>
+            </div>
+
+            {/* Profile Details */}
+            <div className="space-y-4">
+              {selectedUser.phoneNumber && (
+                <div className="flex items-center gap-3 p-3 bg-pale-blue rounded-lg">
+                  <Phone className="text-medium-blue" size={20} />
+                  <div>
+                    <p className="text-xs text-warm-gray">Phone Number</p>
+                    <p className="font-medium text-dark-charcoal">{selectedUser.phoneNumber}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3 p-3 bg-pale-blue rounded-lg">
+                <Mail className="text-medium-blue" size={20} />
+                <div>
+                  <p className="text-xs text-warm-gray">Email Address</p>
+                  <p className="font-medium text-dark-charcoal">{selectedUser.email}</p>
+                </div>
+              </div>
+
+              {selectedUser.location && (
+                <div className="flex items-center gap-3 p-3 bg-pale-blue rounded-lg">
+                  <MapPin className="text-medium-blue" size={20} />
+                  <div>
+                    <p className="text-xs text-warm-gray">Location</p>
+                    <p className="font-medium text-dark-charcoal">{selectedUser.location}</p>
+                  </div>
+                </div>
+              )}
+
+              {selectedUser.bio && (
+                <div className="p-3 bg-pale-blue rounded-lg">
+                  <p className="text-xs text-warm-gray mb-2">About</p>
+                  <p className="text-dark-charcoal">{selectedUser.bio}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              <Button
+                variant="primary"
+                fullWidth
+                onClick={() => {
+                  setShowProfileModal(false)
+                  handleMessage(selectedUser)
+                }}
+              >
+                Send Message
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setShowProfileModal(false)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   )
