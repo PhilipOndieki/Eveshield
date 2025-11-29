@@ -86,7 +86,7 @@ const AIChatbot = () => {
     }
 
     // System prompt to guide the AI's behavior
-    const systemPrompt = `You are SafeGuide AI, a compassionate and knowledgeable safety education assistant for EveShield, a platform dedicated to combating gender-based violence (GBV) in Kenya.
+    const systemPrompt = `You are Eveshield AI, a compassionate and knowledgeable safety education assistant for EveShield, a platform dedicated to combating gender-based violence (GBV) in Kenya.
 
 Your role:
 - Provide accurate information about GBV, safety strategies, and survivor support
