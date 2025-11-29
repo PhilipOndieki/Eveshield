@@ -105,16 +105,16 @@ service cloud.firestore {
         allow delete: if false;
       }
     }
-
     // Notifications collection
     match /notifications/{notificationId} {
       // Allow read only your own notifications
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
 
-      // Allow create if creating for yourself
+      // Allow create if creating for yourself OR for another user (connection requests)
       allow create: if isSignedIn() &&
-                      request.resource.data.userId == request.auth.uid &&
-                      request.resource.data.keys().hasAll(['userId', 'type', 'title', 'message', 'createdAt']);
+                      request.resource.data.keys().hasAll(['userId', 'type', 'title', 'message', 'createdAt']) &&
+                      request.resource.data.userId is string &&
+                      request.resource.data.type is string;
 
       // Allow update only your own notifications (marking as read)
       allow update: if isSignedIn() &&

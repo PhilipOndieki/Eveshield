@@ -40,7 +40,7 @@ const BystandersEnhanced = () => {
       // Fetch my bystanders (accepted connections)
       const bystandersQuery = query(
         collection(db, 'connections'),
-        where('userId', '==', currentUser.uid),
+        where('fromUserId', '==', currentUser.uid),
         where('status', '==', 'accepted')
       )
       const bystandersSnapshot = await getDocs(bystandersQuery)
@@ -68,7 +68,16 @@ const BystandersEnhanced = () => {
       setReceivedRequests(receivedData)
     } catch (error) {
       console.error('Error fetching data:', error)
-      toast.error('Failed to load data')
+      console.error('Error code:', error.code)
+      console.error('Error message:', error.message)
+      
+      if (error.code === 'permission-denied') {
+        toast.error('Permission denied. Please check your Firestore security rules.')
+      } else if (error.code === 'failed-precondition') {
+        toast.error('Database indexes missing. Please create required indexes.')
+      } else {
+        toast.error('Failed to load data. Please refresh the page.')
+      }
     } finally {
       setLoading(false)
     }
@@ -81,7 +90,8 @@ const BystandersEnhanced = () => {
 
   const confirmSendRequest = async () => {
     try {
-      await addDoc(collection(db, 'connections'), {
+      // Create the connection request
+      const connectionRef = await addDoc(collection(db, 'connections'), {
         fromUserId: currentUser.uid,
         fromUserProfile: {
           fullName: userProfile?.fullName,
@@ -99,18 +109,43 @@ const BystandersEnhanced = () => {
         createdAt: serverTimestamp(),
       })
 
+      // ✅ CREATE NOTIFICATION FOR THE RECIPIENT
+      await addDoc(collection(db, 'notifications'), {
+        userId: selectedUser.id,
+        type: 'connection',
+        title: 'New Connection Request',
+        message: `${userProfile?.fullName || 'Someone'} wants to connect with you as a trusted bystander${requestMessage ? `: "${requestMessage}"` : '.'}`,
+        read: false,
+        actionUrl: '/bystanders',
+        metadata: {
+          connectionId: connectionRef.id,
+          fromUserId: currentUser.uid,
+          fromUserName: userProfile?.fullName || 'User',
+        },
+        createdAt: serverTimestamp(),
+      })
+
       toast.success(`Request sent to ${selectedUser.fullName}`)
       setShowRequestModal(false)
       setRequestMessage('')
       fetchAllData()
     } catch (error) {
       console.error('Error sending request:', error)
-      toast.error('Failed to send request')
+      console.error('Error code:', error.code)
+      
+      if (error.code === 'permission-denied') {
+        toast.error('Permission denied. Check your Firestore security rules.')
+      } else if (error.code === 'network-request-failed') {
+        toast.error('Network error. Check your internet connection.')
+      } else {
+        toast.error('Failed to send request. Please try again.')
+      }
     }
   }
 
   const handleAcceptRequest = async (request) => {
     try {
+      // Update original request to accepted
       await updateDoc(doc(db, 'connections', request.id), {
         status: 'accepted',
         acceptedAt: serverTimestamp(),
@@ -125,6 +160,22 @@ const BystandersEnhanced = () => {
         status: 'accepted',
         acceptedAt: serverTimestamp(),
         originalRequestId: request.id,
+      })
+
+      // ✅ NOTIFY THE ORIGINAL SENDER
+      await addDoc(collection(db, 'notifications'), {
+        userId: request.fromUserId,
+        type: 'connection',
+        title: 'Connection Request Accepted',
+        message: `${request.toUserProfile.fullName} accepted your connection request. You're now in each other's trusted bystander network!`,
+        read: false,
+        actionUrl: '/bystanders',
+        metadata: {
+          connectionId: request.id,
+          acceptedBy: request.toUserId,
+          acceptedByName: request.toUserProfile.fullName,
+        },
+        createdAt: serverTimestamp(),
       })
 
       toast.success(`You are now connected with ${request.fromUserProfile.fullName}`)
