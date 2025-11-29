@@ -41,6 +41,34 @@ const AIChatbot = () => {
     'Find resources',
   ]
 
+  const formatMessage = (text) => {
+    return text.split('\n').map((line, index) => {
+      // Bold headers like **Text:**
+      if (line.includes('**')) {
+        return (
+          <div key={index} className="mb-2">
+            {line.split('**').map((part, i) => 
+              i % 2 === 1 ? <strong key={i} className="font-semibold text-medium-blue">{part}</strong> : part
+            )}
+          </div>
+        )
+      }
+      // Bullet points
+      if (line.trim().startsWith('*')) {
+        return (
+          <div key={index} className="ml-4 mb-1.5">
+            • {line.replace(/^\*\s*/, '')}
+          </div>
+        )
+      }
+      // Empty lines for spacing
+      if (!line.trim()) {
+        return <div key={index} className="h-2" />
+      }
+      // Regular text
+      return <div key={index} className="mb-2">{line}</div>
+    })
+  } 
   const handleSendMessage = async (message) => {
     if (!message.trim()) return
 
@@ -191,7 +219,9 @@ Provide a helpful, compassionate response:`
                         : 'bg-medium-blue text-white'
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-line">{message.text}</p>
+                    <div className="text-sm">
+                      {message.type === 'bot' ? formatMessage(message.text) : message.text}
+                    </div>                    
                   </div>
                   <p className="text-xs text-warm-gray mt-1">
                     {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
