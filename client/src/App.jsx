@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import { AuthProvider } from './context/AuthContext'
 
@@ -30,6 +30,32 @@ const PageLoader = () => (
   </div>
 )
 
+// Component to handle chatbot rendering with proper React Router hooks
+const ChatbotWrapper = () => {
+  const location = useLocation()
+  
+  // Define routes where chatbot should appear
+  const protectedRoutes = [
+    '/dashboard',
+    '/contacts',
+    '/bystanders',
+    '/incidents',
+    '/resource-hub',
+    '/profile',
+    '/chat',
+    '/notifications',
+    '/emergency'
+  ]
+  
+  // Check if current path matches any protected route
+  const shouldShowChatbot = protectedRoutes.some(route => 
+    location.pathname.startsWith(route)
+  )
+  
+  // Only render chatbot on protected routes
+  return shouldShowChatbot ? <AIChatbot /> : null
+}
+
 function App() {
   return (
     <AuthProvider>
@@ -41,64 +67,57 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
 
-          {/* Protected Routes */}
-          <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/emergency" element={
-            <ProtectedRoute>
-              <Emergency />
-            </ProtectedRoute>
-          } />
-          <Route path="/contacts" element={
-            <ProtectedRoute>
-              <Contacts />
-            </ProtectedRoute>
-          } />
-          <Route path="/bystanders" element={
-            <ProtectedRoute>
-              <BystandersEnhanced />
-            </ProtectedRoute>
-          } />
-          <Route path="/chat" element={
-            <ProtectedRoute>
-              <Chat />
-            </ProtectedRoute>
-          } />
-          <Route path="/notifications" element={
-            <ProtectedRoute>
-              <Notifications />
-            </ProtectedRoute>
-          } />
-          <Route path="/incidents" element={
-            <ProtectedRoute>
-              <Incidents />
-            </ProtectedRoute>
-          } />
-          <Route path="/resource-hub" element={
-            <ProtectedRoute>
-              <ResourceHub />
-            </ProtectedRoute>
-          } />
-          <Route path="/profile" element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          } />
+            {/* Protected Routes */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/emergency" element={
+              <ProtectedRoute>
+                <Emergency />
+              </ProtectedRoute>
+            } />
+            <Route path="/contacts" element={
+              <ProtectedRoute>
+                <Contacts />
+              </ProtectedRoute>
+            } />
+            <Route path="/bystanders" element={
+              <ProtectedRoute>
+                <BystandersEnhanced />
+              </ProtectedRoute>
+            } />
+            <Route path="/chat" element={
+              <ProtectedRoute>
+                <Chat />
+              </ProtectedRoute>
+            } />
+            <Route path="/notifications" element={
+              <ProtectedRoute>
+                <Notifications />
+              </ProtectedRoute>
+            } />
+            <Route path="/incidents" element={
+              <ProtectedRoute>
+                <Incidents />
+              </ProtectedRoute>
+            } />
+            <Route path="/resource-hub" element={
+              <ProtectedRoute>
+                <ResourceHub />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            } />
           </Routes>
+          
+          {/* AI Chatbot - Properly integrated with React Router */}
+          <ChatbotWrapper />
         </Suspense>
-        {/* AI Chatbot - Available on all protected routes */}
-        {window.location.pathname.startsWith('/dashboard') ||
-         window.location.pathname.startsWith('/contacts') ||
-         window.location.pathname.startsWith('/bystanders') ||
-         window.location.pathname.startsWith('/incidents') ||
-         window.location.pathname.startsWith('/resource-hub') ||
-         window.location.pathname.startsWith('/profile') ||
-         window.location.pathname.startsWith('/chat') ? (
-          <AIChatbot />
-        ) : null}
       </Router>
     </AuthProvider>
   )
