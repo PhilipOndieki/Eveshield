@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { MessageCircle, X, Send, Bot, User } from 'lucide-react'
 import Card from './Card'
 import Button from './Button'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
 const AIChatbot = () => {
   const [isOpen, setIsOpen] = useState(false)
@@ -15,6 +16,23 @@ const AIChatbot = () => {
   ])
   const [inputMessage, setInputMessage] = useState('')
   const [isTyping, setIsTyping] = useState(false)
+  const messagesEndRef = useRef(null)
+  const genAI = useRef(null)
+
+  // Initialize Gemini
+  useEffect(() => {
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY
+    if (apiKey) {
+      genAI.current = new GoogleGenerativeAI(apiKey)
+    } else {
+      console.error('Gemini API key not found')
+    }
+  }, [])
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
   const quickReplies = [
     'What is GBV?',
@@ -37,39 +55,74 @@ const AIChatbot = () => {
     setInputMessage('')
     setIsTyping(true)
 
-    // Simulate AI response (in production, this would call Gemini API)
-    setTimeout(() => {
+    try {
+      // Call Gemini API
+      const response = await callGeminiAPI(message)
+      
       const botResponse = {
         id: Date.now() + 1,
         type: 'bot',
-        text: getBotResponse(message),
+        text: response,
         timestamp: new Date(),
       }
       setMessages(prev => [...prev, botResponse])
+    } catch (error) {
+      console.error('Error calling Gemini:', error)
+      const errorResponse = {
+        id: Date.now() + 1,
+        type: 'bot',
+        text: "I apologize, but I'm having trouble connecting right now. For urgent matters, please:\n\n• Call emergency services: 999\n• Use our Emergency Alert button\n• Contact GBV Hotline: 1195",
+        timestamp: new Date(),
+      }
+      setMessages(prev => [...prev, errorResponse])
+    } finally {
       setIsTyping(false)
-    }, 1500)
+    }
   }
 
-  const getBotResponse = (userMessage) => {
-    const lowerMessage = userMessage.toLowerCase()
-
-    if (lowerMessage.includes('gbv') || lowerMessage.includes('gender')) {
-      return "Gender-Based Violence (GBV) refers to harmful acts directed at individuals based on their gender. It includes physical, sexual, emotional, and economic abuse. If you or someone you know is experiencing GBV, you can use our emergency alert system or contact local support services through our Resources Hub. Would you like to know more about safety planning or available resources?"
+  const callGeminiAPI = async (userMessage) => {
+    if (!genAI.current) {
+      throw new Error('Gemini API not initialized')
     }
 
-    if (lowerMessage.includes('safety') || lowerMessage.includes('tips')) {
-      return "Here are some key safety tips:\n\n1. Trust your instincts - if something feels wrong, it probably is\n2. Keep your emergency contacts updated\n3. Share your location with trusted bystanders when traveling\n4. Learn about the resources available in your area\n5. Create a safety plan with escape routes\n\nWould you like specific information about any of these areas?"
-    }
+    // System prompt to guide the AI's behavior
+    const systemPrompt = `You are SafeGuide AI, a compassionate and knowledgeable safety education assistant for EveShield, a platform dedicated to combating gender-based violence (GBV) in Kenya.
 
-    if (lowerMessage.includes('emergency') || lowerMessage.includes('alert')) {
-      return "To use the Emergency Alert system:\n\n1. Click the floating red SOS button on any page\n2. Select your severity level (Concern, Immediate, or Critical)\n3. Your location will be automatically shared\n4. Your emergency contacts and nearby bystanders will be notified\n\nYou can also add custom notes to provide more context. Remember to test the system with your network when you're safe!"
-    }
+Your role:
+- Provide accurate information about GBV, safety strategies, and survivor support
+- Guide users on how to use the EveShield platform features
+- Offer emotional support with empathy and understanding
+- Always prioritize user safety and well-being
 
-    if (lowerMessage.includes('resource')) {
-      return "Our Resources Hub provides verified support services including:\n\n• Emergency hotlines (24/7)\n• Safe houses and shelters\n• Police stations\n• Medical facilities\n• Legal aid organizations\n• Counseling services\n\nYou can filter resources by category, location, and availability. Visit the Resources Hub from your navigation menu to explore all available support in your area."
-    }
+Platform features you can help with:
+1. Emergency Alert System - Users can trigger SOS alerts that notify emergency contacts and nearby bystanders
+2. Trusted Bystanders Network - Users can connect with people they trust for support
+3. Resources Hub - Directory of verified support services (hotlines, shelters, legal aid, counseling)
+4. Incident Reporting - Users can document incidents securely
+5. Safety Education - Information about GBV prevention and response
 
-    return "I understand you're asking about " + userMessage + ". While I'm here to provide general safety information and help you use this platform, for urgent matters please:\n\n• Call emergency services: 999\n• Use our Emergency Alert button\n• Contact GBV Hotline: 1195\n\nFor other questions, you can ask me about GBV information, safety strategies, platform features, or finding resources. How else can I assist you?"
+Important guidelines:
+- If someone is in immediate danger, direct them to call 999 or use the Emergency Alert button
+- For GBV support, mention the GBV Hotline: 1195
+- Be trauma-informed: avoid victim-blaming, use empowering language
+- Acknowledge that leaving an abusive situation is complex and takes time
+- Respect cultural context while prioritizing safety
+- Keep responses concise but comprehensive
+- If you don't know something, admit it and suggest alternative resources
+
+User question: ${userMessage}
+
+Provide a helpful, compassionate response:`
+
+    try {
+      const model = genAI.current.getGenerativeModel({ model: 'gemini-2.0-flash' })
+      const result = await model.generateContent(systemPrompt)
+      const response = await result.response
+      return response.text()
+    } catch (error) {
+      console.error('Gemini API error:', error)
+      throw error
+    }
   }
 
   return (
@@ -78,7 +131,7 @@ const AIChatbot = () => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-24 right-6 z-40 bg-medium-blue text-white p-4 rounded-full shadow-lg hover:bg-opacity-90 transition-all hover:scale-110"
+          className="fixed bottom-28 right-6 z-[9999] bg-medium-blue text-white p-4 rounded-full shadow-lg hover:bg-opacity-90 transition-all hover:scale-110"
           aria-label="Open AI Chatbot"
         >
           <Bot size={28} />
@@ -87,7 +140,7 @@ const AIChatbot = () => {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-96 max-w-[calc(100vw-3rem)] h-[600px] max-h-[calc(100vh-3rem)] flex flex-col bg-white rounded-lg shadow-2xl">
+        <div className="fixed bottom-6 right-6 z-[9999] w-96 max-w-[calc(100vw-3rem)] h-[600px] max-h-[calc(100vh-3rem)] flex flex-col bg-white rounded-lg shadow-2xl">
           {/* Header */}
           <div className="bg-medium-blue text-white p-4 rounded-t-lg flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -161,6 +214,8 @@ const AIChatbot = () => {
                 </div>
               </div>
             )}
+            
+            <div ref={messagesEndRef} />
           </div>
 
           {/* Quick Replies */}
@@ -196,6 +251,7 @@ const AIChatbot = () => {
                 onChange={(e) => setInputMessage(e.target.value)}
                 placeholder="Ask me anything about safety..."
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-blue text-sm"
+                disabled={isTyping}
               />
               <button
                 type="submit"

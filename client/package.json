@@ -10,6 +10,7 @@
     "deploy:rules": "firebase deploy --only firestore:rules"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "date-fns": "^4.1.0",
     "firebase": "^11.10.0",
     "lucide-react": "^0.468.0",
