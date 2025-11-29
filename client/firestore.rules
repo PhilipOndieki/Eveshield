@@ -1,19 +1,155 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users collection - only authenticated users can access their own data
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidUser() {
+      return isSignedIn() &&
+             exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // Users collection
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      
-      // Emergency contacts subcollection
+      // Allow read if signed in (for user discovery)
+      allow read: if isSignedIn();
+
+      // Allow create only if creating own document
+      allow create: if isOwner(userId) &&
+                      request.resource.data.keys().hasAll(['email', 'fullName', 'createdAt']) &&
+                      request.resource.data.email is string &&
+                      request.resource.data.fullName is string;
+
+      // Allow update only own document
+      allow update: if isOwner(userId);
+
+      // Allow delete only own document
+      allow delete: if isOwner(userId);
+
+      // Emergency Contacts subcollection
       match /emergencyContacts/{contactId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if isOwner(userId);
       }
-      
+
       // Incidents subcollection
       match /incidents/{incidentId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if isOwner(userId);
       }
+    }
+
+    // Connections collection (for bystander relationships)
+    match /connections/{connectionId} {
+      // Allow read if you're involved in the connection
+      allow read: if isSignedIn() &&
+                    (resource.data.fromUserId == request.auth.uid ||
+                     resource.data.toUserId == request.auth.uid);
+
+      // Allow create if you're the sender
+      allow create: if isSignedIn() &&
+                      request.resource.data.fromUserId == request.auth.uid &&
+                      request.resource.data.keys().hasAll(['fromUserId', 'toUserId', 'status', 'createdAt']) &&
+                      request.resource.data.status == 'pending';
+
+      // Allow update if you're the receiver (accepting/declining) or sender (cancelling)
+      allow update: if isSignedIn() &&
+                      ((resource.data.toUserId == request.auth.uid &&
+                        request.resource.data.status in ['accepted', 'declined']) ||
+                       (resource.data.fromUserId == request.auth.uid &&
+                        resource.data.status == 'pending'));
+
+      // Allow delete if you're involved
+      allow delete: if isSignedIn() &&
+                      (resource.data.fromUserId == request.auth.uid ||
+                       resource.data.toUserId == request.auth.uid);
+    }
+
+    // Chats collection
+    match /chats/{chatId} {
+      // Chat ID should be sorted UIDs joined with underscore
+      function getChatParticipants() {
+        return chatId.split('_');
+      }
+
+      function isParticipant() {
+        return request.auth.uid in getChatParticipants();
+      }
+
+      // Allow read/write if you're a participant
+      allow read, write: if isSignedIn() && isParticipant();
+
+      // Messages subcollection
+      match /messages/{messageId} {
+        // Allow read if you're a chat participant
+        allow read: if isSignedIn() && isParticipant();
+
+        // Allow create if you're the sender and a participant
+        allow create: if isSignedIn() &&
+                        isParticipant() &&
+                        request.resource.data.senderId == request.auth.uid &&
+                        request.resource.data.keys().hasAll(['senderId', 'receiverId', 'text', 'timestamp']);
+
+        // Allow update to mark as read
+        allow update: if isSignedIn() &&
+                        isParticipant() &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+
+        // No deletion of messages for safety/evidence
+        allow delete: if false;
+      }
+    }
+
+    // Notifications collection
+    match /notifications/{notificationId} {
+      // Allow read only your own notifications
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      // Allow create if creating for yourself
+      allow create: if isSignedIn() &&
+                      request.resource.data.userId == request.auth.uid &&
+                      request.resource.data.keys().hasAll(['userId', 'type', 'title', 'message', 'createdAt']);
+
+      // Allow update only your own notifications (marking as read)
+      allow update: if isSignedIn() &&
+                      resource.data.userId == request.auth.uid &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+
+      // Allow delete only your own notifications
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // Community Resources collection
+    match /communityResources/{resourceId} {
+      // Anyone signed in can read
+      allow read: if isSignedIn();
+
+      // Only verified users can create
+      allow create: if isValidUser() &&
+                      request.resource.data.keys().hasAll(['submittedBy', 'name', 'category', 'status', 'createdAt']) &&
+                      request.resource.data.submittedBy == request.auth.uid &&
+                      request.resource.data.status == 'pending';
+
+      // Only owner can update pending resources
+      allow update: if isSignedIn() &&
+                      resource.data.submittedBy == request.auth.uid &&
+                      resource.data.status == 'pending';
+
+      // Only owner can delete their pending submissions
+      allow delete: if isSignedIn() &&
+                      resource.data.submittedBy == request.auth.uid &&
+                      resource.data.status == 'pending';
+    }
+
+    // Block all other access
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
