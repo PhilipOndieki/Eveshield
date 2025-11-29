@@ -1,18 +1,29 @@
 import { useState } from 'react'
 import { X, Heart, CreditCard, DollarSign } from 'lucide-react'
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
+import { db } from '../../utils/firebase'
+import { useAuth } from '../../context/AuthContext'
 import Button from './Button'
 import toast from 'react-hot-toast'
+import { 
+  openPaystackPopup, 
+  generateReference, 
+  verifyPayment,
+  SUPPORTED_CURRENCIES 
+} from '../../utils/paystack'
 
 const DonationModal = ({ isOpen, onClose }) => {
+  const { currentUser, userProfile } = useAuth()
   const [amount, setAmount] = useState('')
   const [customAmount, setCustomAmount] = useState('')
+  const [currency, setCurrency] = useState('KES')
   const [frequency, setFrequency] = useState('once') // once, monthly
   const [isAnonymous, setIsAnonymous] = useState(false)
   const [donorName, setDonorName] = useState('')
   const [donorMessage, setDonorMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const presetAmounts = [5, 10, 25, 50, 100, 250]
+  const presetAmounts = [500, 1000, 2500, 5000, 10000, 25000] // KES amounts
 
   const handleDonate = async () => {
     const donationAmount = amount === 'custom' ? parseFloat(customAmount) : parseFloat(amount)
@@ -22,45 +33,96 @@ const DonationModal = ({ isOpen, onClose }) => {
       return
     }
 
+    if (!currentUser || !currentUser.email) {
+      toast.error('Please sign in to make a donation')
+      return
+    }
+
     setLoading(true)
 
-    // In production, integrate with Paystack API
     try {
-      // Simulate Paystack integration
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      const reference = generateReference()
+      const displayName = isAnonymous ? 'Anonymous' : (donorName || userProfile?.fullName || 'Anonymous')
 
-      // This would be the actual Paystack integration:
-      /*
-      const response = await fetch('/api/paystack/initialize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: donationAmount * 100, // Paystack uses kobo
-          email: currentUser.email,
-          currency: 'KES',
-          metadata: {
-            donorName: isAnonymous ? 'Anonymous' : donorName,
-            message: donorMessage,
-            frequency,
-          },
-        }),
+      // Open Paystack payment popup
+      await openPaystackPopup({
+        email: currentUser.email,
+        amount: donationAmount,
+        currency: currency,
+        reference: reference,
+        metadata: {
+          donorName: displayName,
+          message: donorMessage,
+          frequency: frequency,
+          userId: currentUser.uid,
+          isAnonymous: isAnonymous,
+        },
+        onSuccess: async (response) => {
+          console.log('Payment successful:', response)
+          
+          try {
+            // Verify payment on backend
+            const verificationResult = await verifyPayment(response.reference)
+            
+            if (verificationResult.data.status === 'success') {
+              // Save donation to Firestore
+              await addDoc(collection(db, 'donations'), {
+                userId: currentUser.uid,
+                donorEmail: currentUser.email,
+                donorName: displayName,
+                isAnonymous: isAnonymous,
+                amount: donationAmount,
+                currency: currency,
+                frequency: frequency,
+                message: donorMessage,
+                reference: response.reference,
+                status: 'completed',
+                paystackResponse: {
+                  reference: response.reference,
+                  status: verificationResult.data.status,
+                  amount: verificationResult.data.amount,
+                  channel: verificationResult.data.channel,
+                },
+                createdAt: serverTimestamp(),
+              })
+
+              toast.success(`Thank you for your ${frequency === 'monthly' ? 'monthly' : ''} donation of ${currency} ${donationAmount}!`, {
+                duration: 5000,
+                icon: '💚',
+              })
+              
+              onClose()
+              
+              // Reset form
+              setAmount('')
+              setCustomAmount('')
+              setDonorName('')
+              setDonorMessage('')
+            } else {
+              throw new Error('Payment verification failed')
+            }
+          } catch (verifyError) {
+            console.error('Verification error:', verifyError)
+            toast.error('Payment verification failed. Please contact support.')
+          }
+        },
+        onClose: () => {
+          console.log('Payment popup closed')
+          toast.error('Payment cancelled')
+          setLoading(false)
+        },
       })
-
-      const data = await response.json()
-
-      if (data.status) {
-        window.location.href = data.data.authorization_url
-      }
-      */
-
-      toast.success(`Thank you for your ${frequency === 'monthly' ? 'monthly' : ''} donation of $${donationAmount}!`)
-      onClose()
+      
     } catch (error) {
       console.error('Donation error:', error)
       toast.error('Payment processing failed. Please try again.')
-    } finally {
       setLoading(false)
     }
+  }
+
+  const getCurrencySymbol = () => {
+    const curr = SUPPORTED_CURRENCIES.find(c => c.code === currency)
+    return curr?.symbol || currency
   }
 
   if (!isOpen) return null
@@ -85,6 +147,28 @@ const DonationModal = ({ isOpen, onClose }) => {
           >
             <X size={24} />
           </button>
+        </div>
+
+        {/* Currency Selection */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-dark-charcoal mb-3">
+            Select Currency
+          </label>
+          <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
+            {SUPPORTED_CURRENCIES.map((curr) => (
+              <button
+                key={curr.code}
+                onClick={() => setCurrency(curr.code)}
+                className={`py-2 px-3 rounded-lg font-medium transition-colors text-sm ${
+                  currency === curr.code
+                    ? 'bg-medium-blue text-white'
+                    : 'bg-pale-blue text-dark-charcoal hover:bg-medium-blue hover:bg-opacity-20'
+                }`}
+              >
+                {curr.symbol} {curr.code}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Frequency Toggle */}
@@ -114,7 +198,7 @@ const DonationModal = ({ isOpen, onClose }) => {
         {/* Amount Selection */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-dark-charcoal mb-3">
-            Select Amount (USD)
+            Select Amount ({getCurrencySymbol()})
           </label>
           <div className="grid grid-cols-3 gap-3 mb-3">
             {presetAmounts.map((preset) => (
@@ -127,7 +211,7 @@ const DonationModal = ({ isOpen, onClose }) => {
                     : 'bg-white border-2 border-gray-300 text-dark-charcoal hover:border-deep-rose'
                 }`}
               >
-                ${preset}
+                {getCurrencySymbol()} {preset.toLocaleString()}
               </button>
             ))}
           </div>
@@ -144,14 +228,16 @@ const DonationModal = ({ isOpen, onClose }) => {
 
           {amount === 'custom' && (
             <div className="mt-3 relative">
-              <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-warm-gray" size={20} />
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-warm-gray font-medium">
+                {getCurrencySymbol()}
+              </span>
               <input
                 type="number"
                 value={customAmount}
                 onChange={(e) => setCustomAmount(e.target.value)}
                 placeholder="Enter amount"
                 min="1"
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose"
+                className="w-full pl-16 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-deep-rose"
               />
             </div>
           )}
@@ -181,7 +267,7 @@ const DonationModal = ({ isOpen, onClose }) => {
                 type="text"
                 value={donorName}
                 onChange={(e) => setDonorName(e.target.value)}
-                placeholder="John Doe"
+                placeholder={userProfile?.fullName || "John Doe"}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-blue"
               />
             </div>
@@ -219,13 +305,18 @@ const DonationModal = ({ isOpen, onClose }) => {
             Secure Payment via Paystack
           </p>
           <p className="text-xs text-warm-gray">
-            We accept: Cards, Bank Transfer, Mobile Money (M-Pesa, MTN, etc.)
+            We accept: Cards, Bank Transfer, Mobile Money (M-Pesa, MTN, Airtel, etc.)
           </p>
         </div>
 
         {/* Actions */}
         <div className="flex gap-3">
-          <Button variant="primary" fullWidth onClick={handleDonate} disabled={loading || (!amount && !customAmount)}>
+          <Button 
+            variant="primary" 
+            fullWidth 
+            onClick={handleDonate} 
+            disabled={loading || (!amount && !customAmount)}
+          >
             {loading ? 'Processing...' : `Donate ${frequency === 'monthly' ? 'Monthly' : 'Now'}`}
           </Button>
           <Button variant="secondary" onClick={onClose}>

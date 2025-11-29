@@ -156,6 +156,29 @@ service cloud.firestore {
                       resource.data.status == 'pending';
     }
 
+    // Donations collection
+    match /donations/{donationId} {
+      // Only authenticated users can create donations
+      allow create: if isSignedIn() &&
+                      request.resource.data.userId == request.auth.uid &&
+                      request.resource.data.keys().hasAll([
+                        'userId', 'donorEmail', 'donorName', 'isAnonymous',
+                        'amount', 'currency', 'frequency', 'reference',
+                        'status', 'createdAt'
+                      ]) &&
+                      request.resource.data.amount is number &&
+                      request.resource.data.amount > 0 &&
+                      request.resource.data.currency is string &&
+                      request.resource.data.status == 'completed';
+
+      // Users can read their own donations
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      // No updates or deletes allowed (for audit trail)
+      allow update: if false;
+      allow delete: if false;
+    }
+
     // Block all other access
     match /{document=**} {
       allow read, write: if false;
