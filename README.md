@@ -1,8 +1,9 @@
 # EveShield - Community-Powered Emergency Response Platform
 
-[![Built for Power Hacks 2025](https://img.shields.io/badge/Built%20for-Power%20Hacks%202025-E91E63)]()
-[![Theme](https://img.shields.io/badge/Theme-Safety%20by%20Design-FFB6C1)]()
+![eveshield](image.png)
 
+Project URL: https://eveshield.vercel.app/
+Pitchdeck URL: https://www.canva.com/design/DAGKxOtQktM/lseQ0Le3qqmYEoYGiCKyww/edit?ui=eyJEIjp7IlAiOnsiQiI6ZmFsc2V9fX0
 ## 🌟 Overview
 
 EveShield is a community-powered emergency response platform designed for gender-based violence (GBV) prevention and survivor support. Built with React and Firebase, it enables users to build personal safety networks with tiered emergency alert capabilities, trusted bystander networks, and instant access to verified support resources.
